@@ -153,8 +153,8 @@ test/                  hspec test suite
 
 ## Note on development
 
-AI coding assistants (Claude Code) were used in developing this software. The
-results reported in the article were checked against the data.
+AI coding assistants (Claude Code) were heavily used in developing this software and supported the analytics. 
+The results reported in the article were checked against the data.
 
 ## Licence
 
