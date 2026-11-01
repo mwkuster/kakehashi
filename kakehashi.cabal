@@ -1,0 +1,92 @@
+cabal-version:      3.4
+name:               kakehashi
+version:            0.1.0.0
+synopsis:           Sign-Concept Mapper for Japanese (SCM-JP)
+description:        A research instrument that makes the implicit
+                    sign-reading-lexeme-concept mapping of the Japanese
+                    writing system explicit, queryable, and testable.
+                    Built for the Grafematik 2026 paper "Writing Systems
+                    as Cultural Maps: Semantic Alignment in Script Transfer."
+license:            GPL-3.0-or-later
+license-file:       LICENSE
+author:             Marc Wilhelm Küster
+maintainer:         marc@budabe.eu
+homepage:           https://github.com/mwkuster/kakehashi
+bug-reports:        https://github.com/mwkuster/kakehashi/issues
+category:           Language
+build-type:         Simple
+extra-doc-files:    README.md
+                    CITATION.cff
+                    docs/data-model.md
+
+source-repository head
+    type:     git
+    location: https://github.com/mwkuster/kakehashi
+
+common shared
+    default-language:   GHC2021
+    default-extensions: OverloadedStrings
+    ghc-options: -Wall
+                 -Wcompat
+                 -Wincomplete-record-updates
+                 -Wincomplete-uni-patterns
+                 -Wredundant-constraints
+
+library
+    import:           shared
+    exposed-modules:  Kakehashi.Model
+                      Kakehashi.Kanji
+                      Kakehashi.OldJapanese
+                      Kakehashi.Graph
+                      Kakehashi.Ingest.Kanjidic
+                      Kakehashi.Ingest.Jmdict
+                      Kakehashi.Ingest.Unihan
+                      Kakehashi.Ingest.Alignment
+                      Kakehashi.Ingest.Similarity
+                      Kakehashi.Ingest.BaxterSagart
+                      Kakehashi.Ingest.Kyujitai
+                      Kakehashi.Ingest.Sinitic
+                      Kakehashi.Query.Homophone
+                      Kakehashi.Query.Lens
+                      Kakehashi.Query.Worksheet
+                      Kakehashi.Query.Eval
+                      Kakehashi.Query.Report
+                      Kakehashi.Export.Csv
+                      Kakehashi.Export.Latex
+                      Kakehashi.Export.Worksheet
+                      Kakehashi.Export.Curation
+    build-depends:    base          ^>=4.18
+                    , text
+                    , array
+                    , bytestring
+                    , containers
+                    , data-default
+                    , directory
+                    , filepath
+                    , hasbolt
+                    , toml-parser ^>=2.0
+                    , xml-conduit
+                    , xml-types
+    hs-source-dirs:   src
+
+executable kakehashi
+    import:           shared
+    main-is:          Main.hs
+    build-depends:    base                 ^>=4.18
+                    , kakehashi
+                    , directory
+                    , optparse-applicative
+                    , text
+    hs-source-dirs:   app
+
+test-suite kakehashi-test
+    import:           shared
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Spec.hs
+    build-depends:    base ^>=4.18
+                    , kakehashi
+                    , containers
+                    , hasbolt
+                    , hspec
+                    , text

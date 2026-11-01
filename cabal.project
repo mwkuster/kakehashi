@@ -1,0 +1,4 @@
+packages: .
+
+-- The freeze file pins base-4.18 (GHC 9.6); build with that compiler.
+with-compiler: ghc-9.6.7

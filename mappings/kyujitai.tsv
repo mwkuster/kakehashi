@@ -1,0 +1,9 @@
+# Curated shinjitai<TAB>kyūjitai pairs for Japan-only simplifications that the
+# Unihan variant tables do NOT link (so the Baxter–Sagart bridge needs them).
+# First character of each column is used. Extend with the full jōyō old/new list.
+# (Shared CJK simplifications — 経/經, 国/國, 学/學 … — come from Unihan and need
+# not be listed here.)
+図	圖
+缶	罐
+弐	貳
+芸	藝

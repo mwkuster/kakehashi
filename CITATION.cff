@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "kakehashi: A Sign–Concept Mapper for Japanese"
+type: software
+authors:
+  - family-names: Küster
+    given-names: Marc Wilhelm
+    email: marc@budabe.eu
+repository-code: "https://github.com/mwkuster/kakehashi"
+license: GPL-3.0-or-later
+version: 0.1.0.0
+# doi: 10.5281/zenodo.XXXXXXX   # add after the Zenodo release
+# date-released: YYYY-MM-DD
+keywords:
+  - Japanese
+  - kanji
+  - writing systems
+  - grapholinguistics
+  - script transfer
+  - property graph
+abstract: >-
+  A research instrument that makes the implicit sign–reading–lexeme–concept
+  mapping of the Japanese writing system explicit, queryable and testable as a
+  Neo4j property graph. Built for the Grafematik 2026 article "Writing Systems
+  as Cultural Maps: Semantic Alignment in Script Transfer".

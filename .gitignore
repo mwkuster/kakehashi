@@ -1,0 +1,30 @@
+# Cabal / GHC build artifacts
+dist/
+dist-newstyle/
+.ghc.environment.*
+*.hi
+*.o
+*.dyn_hi
+*.dyn_o
+
+# Stack (in case)
+.stack-work/
+
+# Local source-data dumps (KANJIDIC2, JMdict, Unihan, ...)
+data/*
+!data/.gitkeep
+
+# Neo4j volumes if mounted to the repo dir (compose uses named volumes by default)
+deploy/neo4j/data/
+deploy/neo4j/logs/
+deploy/neo4j/plugins/
+
+# Editor / OS
+*.swp
+.DS_Store
+.envrc.local
+
+# Python eval sidecar
+eval/.venv/
+__pycache__/
+*.pyc
