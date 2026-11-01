@@ -1,5 +1,7 @@
 # kakehashi
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23863325.svg)](https://doi.org/10.5281/zenodo.23863325)
+
 *kakehashi* (架け橋, "bridge"), or SCM-JP (Sign–Concept Mapper for Japanese),
 is a research instrument. It makes the mapping from Japanese kanji to readings,
 words and concepts explicit, queryable and testable as a property graph. It
@@ -16,8 +18,12 @@ for native words by perceived similarity of meaning (Handel 2019).
 
 If you use kakehashi, please cite the archived release (see `CITATION.cff`):
 
-> Küster, Marc Wilhelm (2026). *kakehashi: A Sign–Concept Mapper for Japanese.*
-> Software. https://github.com/mwkuster/kakehashi. DOI: *to be added on release*.
+> Küster, Marc Wilhelm (2026). *kakehashi: A Sign–Concept Mapper for Japanese*
+> (version 0.1.0.0). Software. Zenodo. https://doi.org/10.5281/zenodo.23863326
+
+Version 0.1.0.0 is the version used for the Grafematik 2026 article. The
+concept DOI [10.5281/zenodo.23863325](https://doi.org/10.5281/zenodo.23863325)
+always resolves to the latest version.
 
 ## Requirements
 

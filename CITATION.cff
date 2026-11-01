@@ -10,8 +10,15 @@ authors:
 repository-code: "https://github.com/mwkuster/kakehashi"
 license: GPL-3.0-or-later
 version: 0.1.0.0
-# doi: 10.5281/zenodo.XXXXXXX   # add after the Zenodo release
-# date-released: YYYY-MM-DD
+date-released: 2026-11-01
+doi: 10.5281/zenodo.23863325
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23863325
+    description: "Concept DOI: all versions (resolves to the latest)"
+  - type: doi
+    value: 10.5281/zenodo.23863326
+    description: "Version 0.1.0.0, the version used for the Grafematik 2026 article"
 keywords:
   - Japanese
   - kanji
