@@ -19,7 +19,7 @@ for native words by perceived similarity of meaning (Handel 2019).
 If you use kakehashi, please cite the archived release (see `CITATION.cff`):
 
 > Küster, Marc Wilhelm (2026). *kakehashi: A Sign–Concept Mapper for Japanese*
-> (version 0.2.0). Software. Zenodo. https://doi.org/10.5281/zenodo.23863325
+> (version 0.2.0). Software. Zenodo. https://doi.org/10.5281/zenodo.24040004
 
 Version 0.2.0 is the version used for the Grafematik 2026 article. The
 concept DOI [10.5281/zenodo.23863325](https://doi.org/10.5281/zenodo.23863325)
