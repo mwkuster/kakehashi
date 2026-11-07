@@ -1,10 +1,16 @@
+# Neo4j for kakehashi. Written for rootless Podman (`podman compose`), and
+# works unchanged with Docker Compose.
 services:
   neo4j:
     # Pinned to 4.4: the hasbolt driver speaks Bolt protocol v1-v3, which
     # Neo4j 5 dropped. 4.4 still serves Bolt v3, so the driver round-trips.
     # (Revisit if we move off hasbolt.)
-    image: neo4j:4.4-community
+    # Fully qualified, so Podman does not have to resolve a short name.
+    image: docker.io/library/neo4j:4.4-community
     container_name: kakehashi-neo4j
+    # Docker restarts the container when its daemon starts. Rootless Podman has
+    # no daemon: enable `systemctl --user enable podman-restart.service` (and
+    # `loginctl enable-linger` for a start at boot) to get the same.
     restart: unless-stopped
     # Reachable from this machine only. To expose the database on a network,
     # change the bindings in a compose override file and set a real password.
@@ -15,14 +21,23 @@ services:
       # Initial password, set when the data volume is first created; the CLI
       # reads the same variable (KAKEHASHI_NEO4J_PASSWORD).
       NEO4J_AUTH: neo4j/${KAKEHASHI_NEO4J_PASSWORD:-changeme-on-first-run}
-      NEO4J_PLUGINS: '["apoc"]'
-      NEO4J_apoc_export_file_enabled: "true"
-      NEO4J_apoc_import_file_enabled: "true"
+    # Least privilege. The entrypoint starts as (container) root only to fix
+    # the ownership of /data and /logs and to switch to the neo4j user (uid
+    # 7474), which then runs without any capabilities. Keep just what that
+    # step needs, and forbid gaining privileges afterwards.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
-      - neo4j-plugins:/plugins
-      - ./neo4j/import:/import:ro
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:7474 || exit 1"]
       interval: 10s
@@ -32,4 +47,3 @@ services:
 volumes:
   neo4j-data:
   neo4j-logs:
-  neo4j-plugins:

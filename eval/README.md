@@ -102,3 +102,30 @@ and as a range. The pool-based and within-set tests draw nothing at random.
 Result (2026-11-01), *kun* writings over ten seeds: 91.8–92.8% (Unihan),
 88.9–90.6% (Baxter–Sagart), 93.8–94.9% (Wiktionary); all writings vary by less
 than one point.
+
+## Later kana mergers (`historical_kana.py`)
+`OldJapanese.hs` flags only the kō/otsu syllables of Old Japanese. Later sound
+changes also turned distinct words into modern homophones: *wo/o*, *wi/i*,
+*we/e*, *h* between vowels (ハ行転呼) and the yotsugana (ぢ/じ, づ/ず).
+`historical_kana.py` takes the historical kana spelling (歴史的仮名遣い) of each
+writing from the English Wiktionary (`data/kaikki-Japanese.jsonl`, head-template
+arguments `hhira` / `hist*`) and compares the spellings inside each native-type
+set of `universe.py`:
+
+```sh
+make historical-kana     # -> data/historical_kana.md
+```
+
+Many Wiktionary entries lack the historical spelling, so the script reports
+*candidates*, not decisions. The hand review is recorded in the script
+(`VERIFIED`, `REJECTED`). The report also counts the readings that a
+merger-aware hint would flag, checks the article's worked examples, and reruns
+the RQ3 win rate without the readings of the verified sets.
+
+Result (2026-11-07): of the 187 common native-type sets, 63 contain a syllable
+a merger may have produced (72 contain a kō/otsu syllable), but only える (得 /
+彫), おる (織 / 居・折) and たえる (絶 / 堪・耐) are genuine later-merger sets, plus
+いう / ゆう through variant readings of 言う and 結う. In the full set: 16
+candidates, 5 genuine (also いる 入 / 居・率 and おす 押 / 食), 11 rejected. The
+worked examples (はかる, とる, みる, なおす, こす, かく, きく) each have one historical
+spelling. RQ3 without the verified readings: unchanged (88.2%).

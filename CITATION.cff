@@ -9,8 +9,8 @@ authors:
     orcid: "https://orcid.org/0000-0002-2600-0717"
 repository-code: "https://github.com/mwkuster/kakehashi"
 license: GPL-3.0-or-later
-version: 0.1.0.0
-date-released: 2026-11-01
+version: 0.2.0
+date-released: 2026-11-07
 doi: 10.5281/zenodo.23863325
 identifiers:
   - type: doi
@@ -18,7 +18,7 @@ identifiers:
     description: "Concept DOI: all versions (resolves to the latest)"
   - type: doi
     value: 10.5281/zenodo.23863326
-    description: "Version 0.1.0.0, the version used for the Grafematik 2026 article"
+    description: "Version 0.1.0.0"
 keywords:
   - Japanese
   - kanji

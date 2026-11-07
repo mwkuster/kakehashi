@@ -28,7 +28,7 @@ import Kakehashi.Query.Eval (Actual (..), EvalPair (..), samplePairs)
 import Kakehashi.Query.Homophone
   (HomophoneSet (..), RawWriting (..), Writing (..), refineSet)
 import Kakehashi.Query.Lens (okuriganaSplit)
-import Kakehashi.Query.Worksheet (Worksheet (..), WsRow (..), WsSign (..), collapseRows)
+import Kakehashi.Query.Worksheet (Worksheet (..), WsRow (..), WsSign (..), collapseRows, rowSigns)
 
 main :: IO ()
 main = hspec $ do
@@ -203,6 +203,21 @@ main = hspec $ do
                  , WsRow "上る"  (Just "v5") (Just "to rise") Nothing [sign "上"]
                  , WsRow "あがる" Nothing (Just "kana") Nothing [] ]
       map wsWriting (collapseRows rows) `shouldBe` ["上る"]
+    it "collapses okurigana variants whatever the order of their candidate senses" $ do
+      let sense l cp src = WsSign l Nothing Nothing cp Nothing (Just src)
+          rows = [ WsRow "取り扱う" (Just "v5u") (Just "to handle") Nothing
+                     [sense "扱" 0x6271 "unihan", sense "取" 0x53D6 "unihan", sense "扱" 0x6271 "wiktionary"]
+                 , WsRow "取扱う" (Just "v5u") (Just "to handle") Nothing
+                     [sense "取" 0x53D6 "wiktionary", sense "扱" 0x6271 "unihan", sense "取" 0x53D6 "unihan"] ]
+      map wsWriting (collapseRows rows) `shouldBe` ["取扱う"]
+
+  describe "Kakehashi.Query.Worksheet.rowSigns" $ do
+    it "lists each sign once, in written order" $ do
+      let sense l cp src = WsSign l Nothing Nothing cp Nothing (Just src)
+          row = WsRow "取り扱う" (Just "v5u") (Just "to handle") Nothing
+                  [ sense "扱" 0x6271 "unihan", sense "取" 0x53D6 "unihan"
+                  , sense "扱" 0x6271 "baxter-sagart", sense "取" 0x53D6 "wiktionary" ]
+      rowSigns row `shouldBe` ["取", "扱"]
 
   let measureWs = Worksheet "はかる"
         [ WsRow "測る" (Just "v5r,vt") (Just "to measure") (Just "1600650:1")
@@ -222,6 +237,12 @@ main = hspec $ do
       T.isInfixOf "測: measure, estimate"  md       `shouldBe` True
       T.isInfixOf "Mandarin (modern) cè" md         `shouldBe` True
       T.isInfixOf "**Alignment basis:**" md         `shouldBe` True
+    it "names each character once in the heading, however many sources it has" $ do
+      let md = renderWorksheet twoSourceWs
+      T.isInfixOf "## 測る (測)\n" md                         `shouldBe` True
+      T.isInfixOf "測、測" md                                 `shouldBe` False
+      T.isInfixOf "Sinitic candidate (unihan) — 測" md        `shouldBe` True
+      T.isInfixOf "Sinitic candidate (baxter-sagart) — 測" md `shouldBe` True
 
   describe "Kakehashi.Export.Curation.renderCuration" $ do
     it "emits a TOML [[alignment]] table with ids pre-filled and blank fields" $ do

@@ -11,16 +11,20 @@ module Kakehashi.Query.Worksheet
   , Worksheet (..)
   , worksheetFor
   , collapseRows
+  , rowSigns
   , readingLabel
   ) where
 
-import Data.List (sortOn)
+import Data.Char (chr)
+import Data.List (nub, sortOn)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Database.Bolt (Pipe, Record, Value (..), queryP, run)
+
+import Kakehashi.Kanji (kanjiCodepoints)
 
 -- | A sign within a writing and one candidate Sinitic sense of it.
 data WsSign = WsSign
@@ -96,8 +100,18 @@ collapseRows rows =
   where
     grouped :: Map [Text] [WsRow]
     grouped = Map.fromListWith (++)
-      [ (map wsSign (wsSigns r), [r]) | r <- rows, not (null (wsSigns r)) ]
+      [ (rowSigns r, [r]) | r <- rows, not (null (wsSigns r)) ]
     representative = head . sortOn (\r -> (T.length (wsWriting r), wsWriting r))
+
+-- | The distinct signs of a writing, in written order. 'wsSigns' holds one
+-- entry per candidate Sinitic sense, so a sign recurs once per source, and the
+-- query returns the entries in no guaranteed order. Signs that do not occur in
+-- the writing's text (not expected) are kept at the end.
+rowSigns :: WsRow -> [Text]
+rowSigns r = inWriting <> filter (`notElem` inWriting) signs
+  where
+    signs     = nub (map wsSign (wsSigns r))
+    inWriting = filter (`elem` signs) (map (T.singleton . chr) (kanjiCodepoints (wsWriting r)))
 
 -- Decoding -----------------------------------------------------------------
 

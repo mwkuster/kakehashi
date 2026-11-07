@@ -19,19 +19,20 @@ for native words by perceived similarity of meaning (Handel 2019).
 If you use kakehashi, please cite the archived release (see `CITATION.cff`):
 
 > Küster, Marc Wilhelm (2026). *kakehashi: A Sign–Concept Mapper for Japanese*
-> (version 0.1.0.0). Software. Zenodo. https://doi.org/10.5281/zenodo.23863326
+> (version 0.2.0). Software. Zenodo. https://doi.org/10.5281/zenodo.23863325
 
-Version 0.1.0.0 is the version used for the Grafematik 2026 article. The
+Version 0.2.0 is the version used for the Grafematik 2026 article. The
 concept DOI [10.5281/zenodo.23863325](https://doi.org/10.5281/zenodo.23863325)
-always resolves to the latest version.
+always resolves to the latest version. Version 0.1.0.0:
+[10.5281/zenodo.23863326](https://doi.org/10.5281/zenodo.23863326).
 
 ## Requirements
 
 - GHC 9.6.7 and cabal (the dependency freeze file pins `base-4.18`; with
   [ghcup](https://www.haskell.org/ghcup/): `ghcup install ghc 9.6.7`).
-- Docker (or Podman) with compose, for Neo4j **4.4**. The `hasbolt` driver
-  speaks Bolt protocol v1–v3. Neo4j 5 dropped Bolt v3, so 4.4 is the newest
-  compatible server.
+- Rootless Podman (recommended) or Docker, with compose, for Neo4j **4.4**.
+  The `hasbolt` driver speaks Bolt protocol v1–v3. Neo4j 5 dropped Bolt v3, so
+  4.4 is the newest compatible server. See [Container engine](#container-engine).
 - Python ≥ 3.11 for the evaluator in `eval/` (see `eval/README.md`).
 
 ## Quick start
@@ -49,6 +50,33 @@ The CLI connects to `localhost:7687` as `neo4j` with the password
 `KAKEHASHI_NEO4J_USER` or `KAKEHASHI_NEO4J_PASSWORD` to change this; the compose
 file uses `KAKEHASHI_NEO4J_PASSWORD` as the initial password of a new database.
 
+### Container engine
+
+`make neo4j-up` uses `podman compose` if Podman is installed and `docker
+compose` otherwise; set `COMPOSE` to choose (`make neo4j-up COMPOSE="docker
+compose"`). Rootless Podman is recommended: it needs no daemon running as root.
+With Docker, membership in the `docker` group amounts to password-less root
+for every process of the account.
+
+For Podman, `podman compose` needs a compose provider: either `podman-compose`,
+or `docker-compose` talking to the user's Podman socket
+(`systemctl --user enable --now podman.socket`). Rootless Podman also needs
+subordinate ids for the account (`/etc/subuid`, `/etc/subgid`; most
+distributions create them). It has no daemon to restart containers, so for the
+`restart: unless-stopped` policy enable `systemctl --user enable
+podman-restart.service`, and `loginctl enable-linger` for a start at boot.
+
+Whatever the engine, the container runs with least privilege: all capabilities
+dropped except the five its entrypoint needs to switch to the `neo4j` user
+(which then holds none), `no-new-privileges`, and ports bound to `127.0.0.1`.
+
+**Moving an existing database from Docker to Podman.** The two engines keep
+separate volumes. The graph is fully reproducible from `data/`, so rebuilding
+it is simpler than copying the volume: `docker compose -f deploy/compose.yaml
+down`, then `make neo4j-up init-db ingest` and the optional steps of the
+[pipeline](#pipeline) you use, and `align` for any curation files. Remove the old
+volumes with `docker volume rm` once the new graph is in place.
+
 ## Data
 
 No data are included in this repository. Download the sources into `data/`
@@ -60,10 +88,12 @@ No data are included in this repository. Download the sources into `data/`
 | JMdict, English | `JMdict_e` | <http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz> (gunzip) | CC BY-SA 4.0 (EDRDG) |
 | Unihan | `Unihan_Readings.txt`, `Unihan_Variants.txt` | <https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip> (unzip) | Unicode License v3 |
 | Wiktionary (Chinese) | `kaikki-Chinese.jsonl` | Wiktextract dump at <https://kaikki.org/dictionary/Chinese/> | CC BY-SA 4.0 |
+| Wiktionary (Japanese) | `kaikki-Japanese.jsonl` | Wiktextract dump at <https://kaikki.org/dictionary/Japanese/> (only for `make historical-kana`) | CC BY-SA 4.0 |
 | Baxter–Sagart Old Chinese | `BaxterSagartOC2015-10-13.xlsx` | <https://sites.lsa.umich.edu/ocbaxtersagart/> | **no stated licence** – see below |
 
 The article used KANJIDIC2 and JMdict of 30 May 2026, Unihan 17.0.0, the
-Wiktextract dump of 3 June 2026 and Baxter–Sagart v1.1 (file of 2015-10-13).
+Wiktextract Chinese dump of 3 June 2026, the Wiktextract Japanese dump of
+30 October 2026 and Baxter–Sagart v1.1 (file of 2015-10-13).
 Later snapshots work but will give slightly different counts.
 
 **Licensing of derived data.** The code is licensed under the GNU GPL v3 or later (`LICENSE`). The data
@@ -130,9 +160,12 @@ targets. Outputs land in `data/`.
 | stability of the random controls across seeds | `make rq3-seeds` | `rq3_seeds.md` |
 | distribution figure data | `make fig-rq3` | `fig_rq3_hist.csv` |
 | encoding vs decoding (gloss readings) | `make fossil` | `fossil_report.md` |
+| later kana mergers (wo/o, wi/i, we/e, medial h) in the native-type sets | `make historical-kana` | `historical_kana.md` |
 
-`universe` and `fossil` read the raw files directly and need no database. The
-RQ3 targets need the graph (for `eval-pairs`) and the Python venv. Random
+`universe` and `fossil` read the raw files directly and need no database.
+`historical-kana` reads the raw files for the sets, but its RQ3 check needs
+`data/eval_pairs.csv` and the Python venv. The RQ3 targets need the graph (for
+`eval-pairs`) and the Python venv. Random
 control pairs are seeded (`eval-pairs --seed`, default 42), and the Haskell
 dependencies are frozen in `cabal.project.freeze`.
 

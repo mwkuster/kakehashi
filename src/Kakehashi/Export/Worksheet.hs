@@ -13,7 +13,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
 import Kakehashi.OldJapanese (koOtsuMora)
-import Kakehashi.Query.Worksheet (Worksheet (..), WsRow (..), WsSign (..), readingLabel)
+import Kakehashi.Query.Worksheet (Worksheet (..), WsRow (..), WsSign (..), readingLabel, rowSigns)
 
 writeWorksheet :: FilePath -> Worksheet -> IO ()
 writeWorksheet path = TIO.writeFile path . renderWorksheet
@@ -59,7 +59,7 @@ renderWorksheet ws = T.unlines (header <> body)
 
 rowSection :: WsRow -> [Text]
 rowSection r =
-  [ "## " <> wsWriting r <> " (" <> T.intercalate "、" (map wsSign (wsSigns r)) <> ")"
+  [ "## " <> wsWriting r <> " (" <> T.intercalate "、" (rowSigns r) <> ")"
   , ""
   , "- POS: " <> orDash (wsPos r)
   , "- Native concept (JMdict sense 1): " <> orDash (wsNative r)

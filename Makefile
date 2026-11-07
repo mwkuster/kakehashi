@@ -1,4 +1,4 @@
-.PHONY: build test neo4j-up neo4j-down init-db ingest ingest-kanjidic ingest-jmdict ingest-unihan ingest-baxter-sagart bridge-kyujitai ingest-wiktionary rq3-wiktionary homophones homophones-paper worksheet curate align eval-pairs rq3-venv rq3 sim-load rq3-period fossil rq3-strata rq3-controls universe fig-rq3 rq3-overlap rq3-seeds report clean
+.PHONY: build test neo4j-up neo4j-down init-db ingest ingest-kanjidic ingest-jmdict ingest-unihan ingest-baxter-sagart bridge-kyujitai ingest-wiktionary rq3-wiktionary homophones homophones-paper worksheet curate align eval-pairs rq3-venv rq3 sim-load rq3-period fossil rq3-strata rq3-controls universe fig-rq3 rq3-overlap rq3-seeds report historical-kana clean
 
 build:
 	cabal build all
@@ -6,11 +6,15 @@ build:
 test:
 	cabal test
 
+# Container engine: rootless Podman if installed, else Docker. Override with
+# `make neo4j-up COMPOSE="docker compose"` (or "podman-compose").
+COMPOSE ?= $(shell command -v podman >/dev/null 2>&1 && echo "podman compose" || echo "docker compose")
+
 neo4j-up:
-	docker compose -f deploy/compose.yaml up -d neo4j
+	$(COMPOSE) -f deploy/compose.yaml up -d neo4j
 
 neo4j-down:
-	docker compose -f deploy/compose.yaml down
+	$(COMPOSE) -f deploy/compose.yaml down
 
 init-db:
 	cabal run kakehashi -- init-db
@@ -147,3 +151,9 @@ rq3-seeds:
 	done
 	eval/.venv/bin/python eval/rq3_seeds.py --data data/seeds --sources $(SEED_SOURCES) \
 	  --seeds $(SEEDS) --report data/rq3_seeds.md
+
+# Later kana mergers (wo/o, wi/i, we/e, medial h, yotsugana) in the native-type
+# verb sets, from Wiktionary historical spellings (data/kaikki-Japanese.jsonl,
+# https://kaikki.org/dictionary/Japanese/kaikki.org-dictionary-Japanese.jsonl).
+historical-kana: data/eval_pairs.csv
+	cd eval && .venv/bin/python historical_kana.py --data ../data --report ../data/historical_kana.md
