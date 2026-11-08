@@ -17,8 +17,11 @@ identifiers:
     value: 10.5281/zenodo.23863325
     description: "Concept DOI: all versions (resolves to the latest)"
   - type: doi
+    value: 10.5281/zenodo.24058037
+    description: "Version 0.2.2, the version used for the Grafematik 2026 article"
+  - type: doi
     value: 10.5281/zenodo.24057257
-    description: "Version 0.2.1, the version used for the Grafematik 2026 article"
+    description: "Version 0.2.1"
   - type: doi
     value: 10.5281/zenodo.24040004
     description: "Version 0.2.0"
