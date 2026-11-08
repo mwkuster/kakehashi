@@ -16,14 +16,16 @@ for native words by perceived similarity of meaning (Handel 2019).
 
 ## Citing
 
-If you use kakehashi, please cite the archived release (see `CITATION.cff`):
+If you use kakehashi, please cite it by its concept DOI, which covers all
+versions and resolves to the latest one (this is also what `CITATION.cff` and
+GitHub's "Cite this repository" give):
 
-> Küster, Marc Wilhelm (2026). *kakehashi: A Sign–Concept Mapper for Japanese*
-> (version 0.2.0). Software. Zenodo. https://doi.org/10.5281/zenodo.24040004
+> Küster, Marc Wilhelm (2026). *kakehashi: A Sign–Concept Mapper for Japanese*.
+> Software. Zenodo. https://doi.org/10.5281/zenodo.23863325
 
-Version 0.2.0 is the version used for the Grafematik 2026 article. The
-concept DOI [10.5281/zenodo.23863325](https://doi.org/10.5281/zenodo.23863325)
-always resolves to the latest version. Version 0.1.0.0:
+To reproduce the Grafematik 2026 article, use version 0.2.0, the version it
+cites: [10.5281/zenodo.24040004](https://doi.org/10.5281/zenodo.24040004).
+Every release has its own version DOI on Zenodo; version 0.1.0.0 is
 [10.5281/zenodo.23863326](https://doi.org/10.5281/zenodo.23863326).
 
 ## Requirements
