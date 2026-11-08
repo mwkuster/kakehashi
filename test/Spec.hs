@@ -5,7 +5,7 @@ import Data.Maybe (fromJust)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
-import Database.Bolt (Value (..))
+import Kakehashi.Bolt (Value (..))
 import Test.Hspec
 
 import Kakehashi.Export.Csv (csvField)

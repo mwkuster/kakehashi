@@ -26,7 +26,7 @@ import Data.List (mapAccumL, sortOn)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import Database.Bolt (Pipe, Record, Value (..), queryP, run)
+import Kakehashi.Bolt (Pipe, Record, Value (..), queryP, run)
 
 import Kakehashi.Query.Homophone (commonSetReadings)
 

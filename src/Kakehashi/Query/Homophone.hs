@@ -38,7 +38,7 @@ import Data.Maybe (mapMaybe)
 import Data.Ord (Down (..))
 import Data.Text (Text)
 import qualified Data.Text as T
-import Database.Bolt (Pipe, Record, Value (..), queryP, run)
+import Kakehashi.Bolt (Pipe, Record, Value (..), queryP, run)
 
 import Kakehashi.Kanji (kanjiCodepoints)
 

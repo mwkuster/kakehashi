@@ -22,7 +22,7 @@ import qualified Data.Map.Strict as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Database.Bolt (Pipe, Record, Value (..), queryP, run)
+import Kakehashi.Bolt (Pipe, Record, Value (..), queryP, run)
 
 import Kakehashi.Kanji (kanjiCodepoints)
 

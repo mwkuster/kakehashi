@@ -1,4 +1,4 @@
-.PHONY: build test neo4j-up neo4j-down init-db ingest ingest-kanjidic ingest-jmdict ingest-unihan ingest-baxter-sagart bridge-kyujitai ingest-wiktionary rq3-wiktionary homophones homophones-paper worksheet curate align eval-pairs rq3-venv rq3 sim-load rq3-period fossil rq3-strata rq3-controls universe fig-rq3 rq3-overlap rq3-seeds report historical-kana clean
+.PHONY: build test neo4j-up neo4j-down init-db ingest ingest-kanjidic ingest-jmdict ingest-unihan ingest-baxter-sagart bridge-kyujitai ingest-wiktionary rq3-wiktionary homophones homophones-paper worksheet curate align eval-pairs rq3-venv rq3 sim-load rq3-period fossil rq3-strata rq3-controls universe fig-rq3 rq3-overlap rq3-seeds report historical-kana graph-fingerprint clean
 
 build:
 	cabal build all
@@ -157,3 +157,9 @@ rq3-seeds:
 # https://kaikki.org/dictionary/Japanese/kaikki.org-dictionary-Japanese.jsonl).
 historical-kana: data/eval_pairs.csv
 	cd eval && .venv/bin/python historical_kana.py --data ../data --report ../data/historical_kana.md
+
+# Content fingerprint of the graph (every node and relationship, one canonical
+# line each, SHA-256 per label and type), for comparing two graphs, e.g. built
+# with another driver or Neo4j version: diff the SUMMARY.txt of two runs.
+graph-fingerprint:
+	python3 eval/graph_fingerprint.py --out data/fingerprint

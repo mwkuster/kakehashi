@@ -31,7 +31,7 @@ import qualified Data.Map.Strict as Map
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Database.Bolt (Pipe, Value (..), queryP, run)
+import Kakehashi.Bolt (Pipe, Value (..), queryP, run)
 import Numeric (showFFloat)
 
 import Kakehashi.Kanji (isKanji)

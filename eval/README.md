@@ -129,3 +129,13 @@ a merger may have produced (72 contain a kō/otsu syllable), but only える (�
 candidates, 5 genuine (also いる 入 / 居・率 and おす 押 / 食), 11 rejected. The
 worked examples (はかる, とる, みる, なおす, こす, かく, きく) each have one historical
 spelling. RQ3 without the verified readings: unchanged (88.2%).
+
+## Graph fingerprint (`graph_fingerprint.py`)
+`make graph-fingerprint` → `data/fingerprint/`: one file per node label and per
+relationship type, with every item as a canonical JSON line (nodes identified by
+their natural key), and `SUMMARY.txt` with the count and a SHA-256 per file. The
+result depends neither on the driver nor on internal ids or the Neo4j version, so
+two graphs compare with `diff A/SUMMARY.txt B/SUMMARY.txt`. Connection settings
+come from the `KAKEHASHI_NEO4J_*` variables (HTTP port `KAKEHASHI_NEO4J_HTTP_PORT`,
+default 7474). Result (2026-11-02): the graph built with bolty on Neo4j 5.26
+equals the one built with hasbolt on Neo4j 4.4 (7 labels, 11 relationship types).

@@ -30,7 +30,7 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Database.Bolt (Pipe, Value (..), query, queryP, run)
+import Kakehashi.Bolt (Pipe, Value (..), query, queryP, run)
 import Text.Read (readMaybe)
 
 data BSRow = BSRow

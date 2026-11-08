@@ -28,7 +28,7 @@ import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
-import Database.Bolt (Pipe, Value (..), queryP, run)
+import Kakehashi.Bolt (Pipe, Value (..), queryP, run)
 import Numeric (readHex, showHex)
 import qualified Text.XML as XML
 import Text.XML.Cursor

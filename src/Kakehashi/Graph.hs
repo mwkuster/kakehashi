@@ -1,8 +1,8 @@
 -- | Neo4j Bolt client and Cypher helpers (Phase 0).
 --
--- Wraps @hasbolt@ with a small surface the rest of kakehashi uses: open a
--- connection, apply the @cypher/@ schema, and round-trip a 'Sign' node to prove
--- the pipe works end to end.
+-- Wraps the Neo4j driver ('Kakehashi.Bolt') with a small surface the rest of
+-- kakehashi uses: open a connection, apply the @cypher/@ schema, and
+-- round-trip a 'Sign' node to prove the pipe works end to end.
 module Kakehashi.Graph
   ( -- * Connection
     Pipe
@@ -28,7 +28,7 @@ import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Database.Bolt
+import Kakehashi.Bolt
 import System.Directory (doesDirectoryExist, listDirectory)
 import System.Environment (lookupEnv)
 import Text.Read (readMaybe)

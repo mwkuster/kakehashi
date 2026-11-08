@@ -32,9 +32,11 @@ Every release has its own version DOI on Zenodo; version 0.1.0.0 is
 
 - GHC 9.6.7 and cabal (the dependency freeze file pins `base-4.18`; with
   [ghcup](https://www.haskell.org/ghcup/): `ghcup install ghc 9.6.7`).
-- Rootless Podman (recommended) or Docker, with compose, for Neo4j **4.4**.
-  The `hasbolt` driver speaks Bolt protocol v1–v3. Neo4j 5 dropped Bolt v3, so
-  4.4 is the newest compatible server. See [Container engine](#container-engine).
+- Rootless Podman (recommended) or Docker, with compose, for Neo4j **4.4**,
+  the version the article's results were produced with. The `bolty` driver
+  speaks Bolt protocol 4.4–5.4, which Neo4j 4.4 and all later servers accept;
+  the results also reproduce unchanged on Neo4j 5.26. See
+  [Container engine](#container-engine).
 - Python ≥ 3.11 for the evaluator in `eval/` (see `eval/README.md`).
 
 ## Quick start

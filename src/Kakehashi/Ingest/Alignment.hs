@@ -29,7 +29,7 @@ import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Database.Bolt (Pipe, Value (..), queryP, run)
+import Kakehashi.Bolt (Pipe, Value (..), queryP, run)
 import Text.Read (readMaybe)
 import Toml (Result (..), decode)
 import Toml.Schema (FromValue (..), ParseTable, optKey, parseTableFromValue, reqKey)

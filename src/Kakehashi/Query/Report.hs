@@ -14,7 +14,7 @@ import qualified Data.Map.Strict as Map
 import Data.Ord (Down (..))
 import Data.Text (Text)
 import qualified Data.Text as T
-import Database.Bolt (Pipe, Value (..), query, run)
+import Kakehashi.Bolt (Pipe, Value (..), query, run)
 import Numeric (showFFloat)
 
 import Kakehashi.Query.Homophone

@@ -332,7 +332,7 @@ tshow :: Show a => a -> Text
 tshow = T.pack . show
 
 -- | Phase 0 smoke test: apply the cypher/ schema, then MERGE a sample Sign and
--- read it back to prove the hasbolt round-trip works.
+-- read it back to prove the driver round-trip works.
 initDb :: IO ()
 initDb = withDefaultConnection $ \pipe -> do
   files <- schemaFiles "cypher"

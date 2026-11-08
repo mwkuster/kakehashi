@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               kakehashi
-version:            0.2.0
+version:            0.2.1
 synopsis:           Sign-Concept Mapper for Japanese (SCM-JP)
 description:        A research instrument that makes the implicit
                     sign-reading-lexeme-concept mapping of the Japanese
@@ -37,6 +37,7 @@ library
     exposed-modules:  Kakehashi.Model
                       Kakehashi.Kanji
                       Kakehashi.OldJapanese
+                      Kakehashi.Bolt
                       Kakehashi.Graph
                       Kakehashi.Ingest.Kanjidic
                       Kakehashi.Ingest.Jmdict
@@ -60,10 +61,16 @@ library
                     , array
                     , bytestring
                     , containers
+                    , bolty ==0.2.0.0
                     , data-default
                     , directory
                     , filepath
-                    , hasbolt
+                    , network
+                    , packstream-bolt
+                    , transformers
+                    , unordered-containers
+                    , validation-selective
+                    , vector
                     , toml-parser ^>=2.0
                     , xml-conduit
                     , xml-types
@@ -87,6 +94,5 @@ test-suite kakehashi-test
     build-depends:    base ^>=4.18
                     , kakehashi
                     , containers
-                    , hasbolt
                     , hspec
                     , text

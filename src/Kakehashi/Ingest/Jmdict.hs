@@ -33,7 +33,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.XML.Types (Content (..))
-import Database.Bolt (Pipe, Value (..), queryP, run)
+import Kakehashi.Bolt (Pipe, Value (..), queryP, run)
 import qualified Text.XML as XML
 import Text.XML.Cursor
 

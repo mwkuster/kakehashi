@@ -2,9 +2,9 @@
 # works unchanged with Docker Compose.
 services:
   neo4j:
-    # Pinned to 4.4: the hasbolt driver speaks Bolt protocol v1-v3, which
-    # Neo4j 5 dropped. 4.4 still serves Bolt v3, so the driver round-trips.
-    # (Revisit if we move off hasbolt.)
+    # Pinned to 4.4, the version the article's results were produced with.
+    # The bolty driver (Bolt 4.4-5.4) also negotiates with later servers;
+    # the results reproduce unchanged on neo4j:5.26-community.
     # Fully qualified, so Podman does not have to resolve a short name.
     image: docker.io/library/neo4j:4.4-community
     container_name: kakehashi-neo4j
