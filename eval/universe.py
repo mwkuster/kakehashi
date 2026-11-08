@@ -6,9 +6,21 @@ the counts can be split further:
   * one Lexeme per (reading, kanji writing), honouring re_nokanji / re_restr;
   * search-only forms (kanji forms tagged sK, readings tagged sk) are skipped:
     JMdict keeps them only so that searches find the entry;
+  * expressions are skipped: entries whose first sense is tagged exp
+    (コーヒーを入れる, 気を付ける), plus those listed in mappings/expressions.tsv
+    (目につく, tagged v5k). They are not words, and the verb they
+    contain is counted on its own. The first sense decides, since some verbs
+    (上がる) have an exp sense further down;
   * a writing's signature = its distinct kanji in order of first occurrence;
   * writings without kanji are dropped;
-  * a reading belongs to the universe if it has >= 2 distinct signatures.
+  * two writings *compete* only if different kanji stand for overlapping
+    parts of the reading (`kanji_spans`): 痺れをきらす (痺 = しび) and
+    しびれを切らす (切 = き) do not, so a word whose writings differ only in
+    which part is written in kana is not a set; 入れる / 淹れる (both い) and
+    表す / 現わす (あらわ / あら) do. A writing that cannot be aligned with
+    its reading (ateji, 々) competes with every other signature, as before;
+  * a reading belongs to the universe if >= 2 distinct signatures remain
+    among its competing writings.
 
 Subsets reported: all; common (JMdict ke_pri) writings only; by part of
 speech (verbs vs nouns); a sensitivity check without outdated, irregular and
@@ -67,11 +79,34 @@ def kata_to_hira(s):
     return "".join(chr(ord(c) - 0x60) if "ァ" <= c <= "ヶ" else c for c in s)
 
 
-def load_lexemes(path):
-    """(reading, orthography, pos set, common?, kanji-form tags) per (reading x kanji writing)."""
+# further expressions that JMdict does not tag exp (目につく), shared with the Haskell ingest
+EXPRESSIONS_FILE = Path(__file__).resolve().parent.parent / "mappings" / "expressions.tsv"
+
+
+def load_expression_list(path=EXPRESSIONS_FILE):
+    """ent_seq numbers from the first column of mappings/expressions.tsv."""
+    return {line.split("\t")[0].strip() for line in Path(path).read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")}
+
+
+def is_expression(entry, extra=frozenset()):
+    """Is a JMdict entry an expression: is its first sense tagged exp, or is it listed?"""
+    seq = re.search(r"<ent_seq>(\d+)</ent_seq>", entry)
+    if seq and seq.group(1) in extra:
+        return True
+    s = re.search(r"<sense>(.*?)</sense>", entry, re.S)
+    return bool(s) and "<pos>&exp;</pos>" in s.group(1)
+
+
+def load_lexemes(path, expressions=False):
+    """(reading, orthography, pos set, common?, kanji-form tags) per (reading x kanji writing).
+    Expression entries are skipped unless expressions=True."""
     text = Path(path).read_text(encoding="utf-8")
+    extra = load_expression_list()
     out = []
     for e in re.findall(r"<entry>.*?</entry>", text, re.S):
+        if not expressions and is_expression(e, extra):
+            continue
         kebs = []
         for ke in re.findall(r"<k_ele>(.*?)</k_ele>", e, re.S):
             inf = set(re.findall(r"<ke_inf>&(.*?);</ke_inf>", ke))
@@ -103,13 +138,58 @@ def load_readings(path):
     return on, kun
 
 
+def kanji_spans(reb, orth):
+    """Align a writing with its reading: [(kanji run, start, end)] in the reading
+    (kana normalised to hiragana), or None if the kana of the writing do not
+    match the reading. Each run of kanji takes the shortest stretch of the
+    reading that lets the rest match (leftmost-shortest, as `.+?`)."""
+    runs = []
+    for ch in orth:
+        k = is_kanji(ch)
+        if runs and runs[-1][0] == k:
+            runs[-1][1] += ch
+        else:
+            runs.append([k, ch])
+    pat = "".join("(.+?)" if k else re.escape(kata_to_hira(s)) for k, s in runs)
+    m = re.fullmatch(pat, kata_to_hira(reb))
+    if not m:
+        return None
+    kruns = [s for k, s in runs if k]
+    return [(s, m.start(i + 1), m.end(i + 1)) for i, s in enumerate(kruns)]
+
+
+def compete(sa, sb):
+    """Do two writings (their kanji_spans) put different kanji on overlapping
+    parts of the reading? An unaligned writing (None) competes."""
+    if sa is None or sb is None:
+        return True
+    return any(ka != kb and s1 < e2 and s2 < e1
+               for ka, s1, e1 in sa for kb, s2, e2 in sb)
+
+
+def competing(reb, orths):
+    """The writings of a reading that compete with a writing of another signature."""
+    orths = list(orths)
+    sp = {o: kanji_spans(reb, o) for o in orths}
+    sig = {o: signature(o) for o in orths}
+    return {a for a in orths
+            if any(sig[a] != sig[b] and compete(sp[a], sp[b]) for b in orths)}
+
+
 def universe(lexemes):
-    sigs = collections.defaultdict(set)
+    """reading -> the signatures of its competing writings, for readings with >= 2."""
+    orths = collections.defaultdict(set)
     for reb, keb, *_ in lexemes:
-        s = signature(keb)
-        if s:
-            sigs[reb].add(s)
-    return {r: s for r, s in sigs.items() if len(s) >= 2}
+        if signature(keb):
+            orths[reb].add(keb)
+    out = {}
+    for r, os in orths.items():
+        if len({signature(o) for o in os}) < 2:
+            continue
+        sigs = {signature(o) for o in competing(r, os)}
+        if len(sigs) >= 2:
+            out[r] = sigs
+    return out
 
 
 def is_on_writing(reb, sig, on):
@@ -135,6 +215,7 @@ def main():
     ap.add_argument("--report", default=None, type=Path)
     args = ap.parse_args()
     lex = load_lexemes(args.data / "JMdict_e")
+    lex_exp = load_lexemes(args.data / "JMdict_e", expressions=True)   # for the comparison
     on, kun = load_readings(args.data / "kanjidic2.xml")
 
     # conjugation-class tags only (v1, v5r, vk, vz, ...); vt/vi mark transitivity, vs = suru-nouns
@@ -144,7 +225,8 @@ def main():
     # native-type verb writing: one kanji, not a Sino-Japanese verb (愛する, 感じる)
     single_verb = lambda l: (is_verb(l[2]) and len(signature(l[1])) == 1
                              and not sino_verb(l[0], l[1], on))
-    subsets = [
+    def make_subsets(lex):
+        return [
         ("all writings", lex),
         ("common writings", [l for l in lex if l[3]]),
         ("verbs (all)", [l for l in lex if is_verb(l[2])]),
@@ -154,7 +236,8 @@ def main():
         ("native-type verbs, common", [l for l in lex if single_verb(l) and l[3]]),
         ("all writings, without oK/iK/rK forms", [l for l in lex if usual(l)]),
         ("native-type verbs, without oK/iK/rK forms", [l for l in lex if single_verb(l) and usual(l)]),
-    ]
+        ]
+    subsets = make_subsets(lex)
     lines = ["# Homophone-by-writing universe (F5, from raw JMdict)", "",
              "| subset | readings with ≥ 2 kanji signatures | largest sets |", "|---|---|---|"]
     for name, sub in subsets:
@@ -163,6 +246,26 @@ def main():
         lines.append(f"| {name} | {len(u):,} | " + ", ".join(f"{r} ({len(u[r])})" for r in top) + " |")
     lines += ["", "Native-type verbs: verb writings with a single kanji, leaving out Sino-Japanese "
               "verbs read as an on reading + する/ずる/じる/ぜる (愛する, 感じる)."]
+
+    # what the two rules remove: the competition rule (sets that differ only in which part
+    # is in kana) and the exclusion of expressions (コーヒーを入れる, 気を付ける)
+    lines += ["", "The two rules of the set definition, and what they remove. *Competition*: two "
+              "writings count as different only if different kanji stand for overlapping parts of "
+              "the reading (しびれを切らす / 痺れをきらす do not; 入れる / 淹れる do). *Expressions*: "
+              "entries whose first sense is tagged exp (コーヒーを入れる, 気を付ける) are left out.", "",
+              "| subset | signatures only | + competition | + no expressions (= above) |",
+              "|---|---|---|---|"]
+    final = dict(subsets)
+    for name, sub in make_subsets(lex_exp):
+        sigs = collections.defaultdict(set)
+        for reb, keb, *_ in sub:
+            if signature(keb):
+                sigs[reb].add(signature(keb))
+        before = sum(len(s) >= 2 for s in sigs.values())
+        lines.append(f"| {name} | {before:,} | {len(universe(sub)):,} | {len(universe(final[name])):,} |")
+    unaligned = sum(kanji_spans(reb, keb) is None for reb, keb, *_ in lex if signature(keb))
+    lines += ["", f"Writings that cannot be aligned with their reading (kept, as competing): "
+              f"{unaligned:,} of {sum(1 for l in lex if signature(l[1])):,}."]
 
     # raw spellings: readings with >= 2 distinct written forms, before okurigana
     # variants are collapsed and kanji-less forms dropped

@@ -107,8 +107,7 @@ shared under CC BY-SA. The Baxter–Sagart dataset has no redistribution licence
 Download it yourself, keep it in `data/`, and do not redistribute it or graph
 dumps that contain it. Results that depend on it can be reproduced only by
 readers who obtain the file themselves. `mappings/kyujitai.tsv` (a curated list
-of shinjitai → kyūjitai pairs that Unihan omits) is original work under the
-code's licence (GPL v3 or later).
+of shinjitai → kyūjitai pairs that Unihan omits) is original work under the code's licence (GPL v3 or later). `mappings/expressions.tsv` quotes JMdict entry numbers and writings, which remain under JMdict's CC BY-SA licence.
 
 **Quotations in the tests.** The unit tests (`test/Spec.hs`) quote a few
 individual entries as test data: glosses from JMdict and KANJIDIC2 (© EDRDG,
@@ -156,6 +155,7 @@ targets. Outputs land in `data/`.
 | result | command | output |
 |---|---|---|
 | homophone-by-writing universe and its subsets | `make universe` | `universe_report.md` |
+| list of the native-type verb sets (898 / 187 / 660) | `make native-sets` | `native_sets.md` |
 | RQ3, modern glosses (Unihan) | `make eval-pairs rq3` | `rq3_report.md` |
 | RQ3, Old Chinese glosses (Baxter–Sagart) | `make rq3-period` | `rq3_report_bs.md` |
 | RQ3, Wiktionary glosses | `make rq3-wiktionary` | `rq3_report_wikt.md` |
@@ -167,7 +167,7 @@ targets. Outputs land in `data/`.
 | encoding vs decoding (gloss readings) | `make fossil` | `fossil_report.md` |
 | later kana mergers (wo/o, wi/i, we/e, medial h) in the native-type sets | `make historical-kana` | `historical_kana.md` |
 
-`universe` and `fossil` read the raw files directly and need no database.
+`universe`, `native-sets` and `fossil` read the raw files directly and need no database.
 `historical-kana` reads the raw files for the sets, but its RQ3 check needs
 `data/eval_pairs.csv` and the Python venv. The RQ3 targets need the graph (for
 `eval-pairs`) and the Python venv. Random
@@ -181,7 +181,7 @@ app/Main.hs            CLI (optparse-applicative)
 src/Kakehashi/
   Model.hs             Data types (Sign, Reading, Lexeme, Concept, SiniticSense, Alignment)
   Graph.hs             Neo4j (Bolt) client, schema application
-  Kanji.hs             Kanji signatures and okurigana handling
+  Kanji.hs             Kanji signatures, alignment of kanji with the reading
   OldJapanese.hs       Old Japanese kō/otsu (上代特殊仮名遣い) susceptibility
   Ingest/              KANJIDIC2, JMdict, Unihan, Baxter–Sagart, generic Sinitic,
                        kyūjitai bridge, curated alignments, similarity scores
@@ -190,6 +190,7 @@ src/Kakehashi/
 cypher/                Schema (constraints + indexes), applied by init-db
 eval/                  Python evaluator and raw-file analyses (see eval/README.md)
 mappings/kyujitai.tsv  Curated shinjitai → kyūjitai pairs
+mappings/expressions.tsv  JMdict entries that count as expressions without an exp tag (目につく)
 deploy/                compose.yaml (Neo4j 4.4)
 docs/                  Data model
 test/                  hspec test suite

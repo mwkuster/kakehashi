@@ -8,7 +8,13 @@
 --
 --   * okurigana variants of one kanji collapse (上がる / 上る / 上ル → 上);
 --   * purely phonetic writings with no kanji (kana, ４, ＣＤ…) are dropped, so a
---     word's kana spelling is not counted beside its kanji (the こう/公 case).
+--     word's kana spelling is not counted beside its kanji (the こう/公 case);
+--   * writings count as different only if they /compete/: different kanji
+--     stand for overlapping parts of the reading ('competes'). しびれを切らす /
+--     痺れをきらす, which differ only in which part is written in kana, do not;
+--   * expressions (Lexemes whose JMdict entries all start with an @exp@ sense,
+--     コーヒーを入れる, 気を付ける) are not words and are left out; the verb
+--     they contain is counted on its own.
 --
 -- Optional filters separate the two families the raw universe conflates:
 -- Sino-Japanese on-reading collapses (こう → 公候効…, nominal) versus native
@@ -40,7 +46,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Kakehashi.Bolt (Pipe, Record, Value (..), queryP, run)
 
-import Kakehashi.Kanji (kanjiCodepoints)
+import Kakehashi.Kanji (competes, kanjiCodepoints, kanjiSpans)
 
 -- | One distinct-kanji writing within a homophone set.
 data Writing = Writing
@@ -122,7 +128,8 @@ commonSetReadings pipe =
 cypher :: Text
 cypher =
   "MATCH (l:Lexeme) \
-  \WHERE ($pos = '' \
+  \WHERE NOT coalesce(l.expression, false) \
+  \  AND ($pos = '' \
   \       OR ANY(p IN split(coalesce(l.pos, ''), ',') WHERE p STARTS WITH $pos)) \
   \  AND ((NOT $verbs) \
   \       OR ANY(p IN split(coalesce(l.pos, ''), ',') \
@@ -142,15 +149,24 @@ cypher =
 
 -- Refinement (pure) --------------------------------------------------------
 
--- | Collapse a reading's raw writings into distinct-kanji writings, drop
--- kanji-less ones, and keep the set only if ≥ minSize remain.
+-- | Collapse a reading's competing raw writings into distinct-kanji writings,
+-- drop kanji-less ones, and keep the set only if ≥ minSize remain.
 refineSet :: Int -> (Text, [RawWriting]) -> Maybe HomophoneSet
 refineSet minSize (phon, raws)
   | length writings >= minSize =
       Just HomophoneSet { hsPhonology = phon, hsSize = length writings, hsWritings = writings }
   | otherwise = Nothing
   where
-    writings = collapseWritings raws
+    writings = collapseWritings (competingWritings phon raws)
+
+-- | The writings that compete with a writing of another kanji signature
+-- ('competes'); writings without kanji are kept for 'collapseWritings' to drop.
+competingWritings :: Text -> [RawWriting] -> [RawWriting]
+competingWritings phon raws =
+  [ w | (w, sig, sp) <- annotated
+      , null sig || or [ sig /= sig' && competes sp sp' | (_, sig', sp') <- annotated, not (null sig') ] ]
+  where
+    annotated = [ (w, kanjiCodepoints o, kanjiSpans phon o) | w <- raws, let o = rwOrthography w ]
 
 -- | Group writings by kanji signature (first-occurrence order preserved),
 -- dropping any with no kanji. Within a group the shortest orthography is the

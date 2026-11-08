@@ -11,13 +11,14 @@ import Test.Hspec
 import Kakehashi.Export.Csv (csvField)
 import Kakehashi.Export.Latex (latexEscape)
 import Kakehashi.Ingest.BaxterSagart (BSRow (..), bsId, parseRow)
-import Kakehashi.Ingest.Jmdict (PLexeme (..), lexemesFromText)
+import Kakehashi.Ingest.Jmdict (PLexeme (..), lexemesFromText, lexemesFromTextWith, parseExpressionList)
+import qualified Data.Set as Set
 import Kakehashi.Ingest.Kanjidic (isJoyo, splitKun, variantLinksFromText)
 import Kakehashi.Ingest.Kyujitai (confirmedPairs, parseCuratedPairs, shinKyuPairsFromVariants)
 import Kakehashi.Ingest.Similarity (SimRow (..), parseScores)
 import Kakehashi.Ingest.Sinitic (SinRow (..), parseSiniticRow)
 import Kakehashi.Ingest.Unihan (parseReadingLine)
-import Kakehashi.Kanji (isKanji, kanjiCodepoints)
+import Kakehashi.Kanji (competes, isKanji, kanjiCodepoints, kanjiSpans)
 import Kakehashi.Model
 import Kakehashi.OldJapanese (jtkSusceptible, koOtsuMora)
 import Kakehashi.Export.Curation (renderCuration)
@@ -76,6 +77,25 @@ main = hspec $ do
     it "deduplicates a repeated kanji" $
       kanjiCodepoints "段段" `shouldBe` [0x6BB5]
 
+  describe "Kakehashi.Kanji.kanjiSpans" $ do
+    it "aligns a kanji with the part of the reading it stands for" $ do
+      kanjiSpans "しびれをきらす" "しびれを切らす" `shouldBe` Just [("切", 4, 5)]
+      kanjiSpans "しびれをきらす" "痺れをきらす"   `shouldBe` Just [("痺", 0, 2)]
+    it "normalises katakana in reading and writing" $
+      kanjiSpans "コーヒーをいれる" "コーヒーを入れる" `shouldBe` Just [("入", 5, 6)]
+    it "aligns each run of kanji between the kana" $
+      kanjiSpans "おいかける" "追い掛ける" `shouldBe` Just [("追", 0, 1), ("掛", 2, 3)]
+    it "gives Nothing when the kana do not match the reading" $
+      kanjiSpans "ひとびと" "人々" `shouldBe` Nothing
+
+  describe "Kakehashi.Kanji.competes" $ do
+    it "is false for kanji on different parts of the reading" $
+      competes (Just [("切", 4, 5)]) (Just [("痺", 0, 2)]) `shouldBe` False
+    it "is true for different kanji on overlapping parts" $
+      competes (Just [("表", 0, 3)]) (Just [("現", 0, 2)]) `shouldBe` True
+    it "is true when a writing cannot be aligned" $
+      competes Nothing (Just [("人", 0, 2)]) `shouldBe` True
+
   describe "Kakehashi.Kanji.isKanji" $ do
     it "accepts a CJK Unified ideograph" $
       isKanji 0x6E2C `shouldBe` True
@@ -101,6 +121,22 @@ main = hspec $ do
       hsSize hs `shouldBe` 2
       map wOrthography (hsWritings hs) `shouldBe` ["測る", "計る"]
       wVariants (head (hsWritings hs)) `shouldBe` ["測ル"]
+    it "drops writings that differ only in which part is written in kana" $ do
+      refineSet 2 ("しびれをきらす", [raw "しびれを切らす" "v5s", raw "痺れをきらす" "v5s"])
+        `shouldBe` Nothing
+      refineSet 2 ("おいかける", [raw "追いかける" "v1", raw "追い掛ける" "v1"])
+        `shouldBe` Nothing
+    it "keeps different kanji for the same part of the reading" $ do
+      fmap hsSize (refineSet 2 ("いれる", [raw "入れる" "v1", raw "淹れる" "v1"]))
+        `shouldBe` Just 2
+      -- okurigana variants overlap: 表 = あらわ, 現 = あら
+      fmap hsSize (refineSet 2 ("あらわす", [raw "表す" "v5s", raw "現わす" "v5s"]))
+        `shouldBe` Just 2
+    it "leaves out a member that competes with no other writing" $
+      -- かき込む (込 = こ) competes neither with 書き込む nor 掻き込む (書 / 掻 = か)
+      fmap (map wOrthography . hsWritings)
+        (refineSet 2 ("かきこむ", [raw "かき込む" "v5m", raw "書き込む" "v5m", raw "掻き込む" "v5m"]))
+        `shouldBe` Just ["掻き込む", "書き込む"]
     it "carries the representative's priority through the collapse" $ do
       let hs = fromJust $ refineSet 2 ("はかる",
             [ RawWriting "測る" (Just "v5r") (Just "ichi1,news1") (Just "to measure")
@@ -370,6 +406,28 @@ main = hspec $ do
       map plPriority ls `shouldBe` [Just "news1,ichi1"]
       map plPos ls      `shouldBe` [Just "v5r,vt"]
       map plConcepts ls `shouldBe` [[("1:1", "to measure"), ("2:1", "to fathom")]]
+    it "flags expressions by their first sense, and only if every entry is one" $ do
+      let entry n keb reb poss = TL.concat
+            [ "<entry><ent_seq>", n, "</ent_seq><k_ele><keb>", keb, "</keb></k_ele>"
+            , "<r_ele><reb>", reb, "</reb></r_ele>"
+            , TL.concat [ "<sense>" <> TL.concat [ "<pos>&" <> p <> ";</pos>" | p <- ps ]
+                          <> "<gloss>g</gloss></sense>" | ps <- poss ]
+            , "</entry>" ]
+          flags d = [ (plOrthography l, plExpression l)
+                    | l <- either (const []) id (lexemesFromText ("<JMdict>" <> d <> "</JMdict>")) ]
+      flags (entry "1" "コーヒーを入れる" "コーヒーをいれる" [["exp", "v1"]])
+        `shouldBe` [("コーヒーを入れる", True)]
+      -- 上がる has an exp sense, but not first
+      flags (entry "2" "上がる" "あがる" [["v5r", "vi"], ["exp"]])
+        `shouldBe` [("上がる", False)]
+      -- the same writing in an expression entry and a word entry is a word
+      flags (entry "3" "X入る" "xいる" [["exp"]] <> entry "4" "X入る" "xいる" [["v5r"]])
+        `shouldBe` [("X入る", False)]
+      -- an entry listed in mappings/expressions.tsv is one, whatever its tags
+      let listed = parseExpressionList "# comment\n\n1605000\t目につく\tnote\n"
+          doc = "<JMdict>" <> entry "1605000" "目につく" "めにつく" [["v5k"]] <> "</JMdict>"
+      listed `shouldBe` Set.fromList ["1605000"]
+      map plExpression (either (const []) id (lexemesFromTextWith listed doc)) `shouldBe` [True]
 
   describe "Kakehashi.Ingest.Kanjidic.variantLinksFromText" $ do
     it "resolves JIS and UCS variant codes to codepoints and ignores index codes" $ do

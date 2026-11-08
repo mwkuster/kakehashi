@@ -71,6 +71,7 @@ actualsCypher :: Text
 actualsCypher =
   "MATCH (l:Lexeme)-[:WRITTEN_WITH]->(s:Sign) \
   \WHERE l.priority IS NOT NULL AND l.phonology IN $readings \
+  \  AND NOT coalesce(l.expression, false) \
   \MATCH (s)-[:HAS_SINITIC_SENSE]->(ss:SiniticSense) \
   \WHERE ss.source = $source AND ss.gloss IS NOT NULL \
   \MATCH (l)-[:MEANS]->(c:Concept) \

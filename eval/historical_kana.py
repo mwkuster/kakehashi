@@ -243,7 +243,7 @@ def main():
         sets = universe(ls)
         members = collections.defaultdict(lambda: collections.defaultdict(list))
         for reb, keb, *_ in ls:
-            if reb in sets:
+            if reb in sets and signature(keb) in sets[reb]:   # competing writings only
                 members[reb][signature(keb)].append(keb)
         stat = collections.Counter(); types = collections.Counter(); ko = collections.Counter()
         susc = sum(merger_susceptible(r) for r in sets)

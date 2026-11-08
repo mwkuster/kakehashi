@@ -1,0 +1,6 @@
+# JMdict entries that count as expressions although JMdict does not tag their
+# first sense exp: a noun and a particle in front of a verb that is counted on
+# its own. Expressions are left out of the homophone-by-writing sets (see
+# eval/universe.py and Kakehashi.Ingest.Jmdict). Read by both.
+# Columns: ent_seq<TAB>writings<TAB>note. Only the first column is used.
+1605000	目につく・目に付く・眼につく・眼に付く	目 + に + つく 'to catch one's eye'; JMdict tags it v5k

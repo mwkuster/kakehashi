@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               kakehashi
-version:            0.2.1
+version:            0.2.2
 synopsis:           Sign-Concept Mapper for Japanese (SCM-JP)
 description:        A research instrument that makes the implicit
                     sign-reading-lexeme-concept mapping of the Japanese

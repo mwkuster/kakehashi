@@ -11,6 +11,11 @@
 -- in several entries becomes one Lexeme with the union of their POS and
 -- priority tags and of their senses ('mergeLexemes').
 --
+-- Expressions are flagged ('plExpression'): entries whose first sense is tagged
+-- @exp@ (コーヒーを入れる), plus the entries listed in
+-- @mappings/expressions.tsv@ (目につく, tagged v5k). The homophone-by-writing
+-- sets leave them out.
+--
 -- DOM via @Text.XML.Cursor@. JMdict's DTD entities (@&v5r;@, @&n;@, …) are
 -- kept as their bare names by 'decodeEntity', so @<pos>&v5r;</pos>@ ingests as
 -- the POS code @"v5r"@. (At ~60 MB DOM is comfortable in memory; switch to a
@@ -21,6 +26,9 @@ module Kakehashi.Ingest.Jmdict
     -- * Pure parsing (exposed for testing)
   , PLexeme (..)
   , lexemesFromText
+  , lexemesFromTextWith
+  , parseExpressionList
+  , expressionsFile
   , mergeLexemes
   ) where
 
@@ -28,6 +36,10 @@ import Control.Monad (forM_)
 import Data.Containers.ListUtils (nubOrd, nubOrdOn)
 import Data.List (nub)
 import qualified Data.Map.Strict as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
+import qualified Data.Text.IO as TIO
+import System.Directory (doesFileExist)
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -50,6 +62,9 @@ data PLexeme = PLexeme
   , plPriority    :: !(Maybe Text)  -- ^ this writing's @ke_pri@ tags (news1, ichi1, …)
   , plSigns       :: ![Int]
   , plConcepts    :: ![(Text, Text)]  -- ^ (conceptId, gloss) senses this writing means
+  , plExpression  :: !Bool  -- ^ an expression: the entry's first sense is tagged @exp@
+                            --   (コーヒーを入れる); after merging, true only if every
+                            --   entry with this writing is one
   }
   deriving (Eq, Show)
 
@@ -72,8 +87,8 @@ data IngestStats = IngestStats
 
 -- Parsing ------------------------------------------------------------------
 
-parseEntry :: Cursor -> [PLexeme]
-parseEntry e =
+parseEntry :: Set Text -> Cursor -> [PLexeme]
+parseEntry extra e =
   [ PLexeme
       { plPhonology   = reb
       , plOrthography = keb
@@ -81,6 +96,7 @@ parseEntry e =
       , plPriority    = joinTags (Map.findWithDefault [] keb priorities)
       , plSigns       = kanjiCodepoints keb
       , plConcepts    = [ (senseId s, senseGloss s) | s <- senses, applies keb reb s ]
+      , plExpression  = expression
       }
   | r          <- e $/ element "r_ele"
   , (reb, keb) <- rElePairs kebs r
@@ -96,6 +112,11 @@ parseEntry e =
     kebs       = map fst kEles
     priorities = Map.fromList kEles
     pos        = joinTags (nub (e $/ element "sense" &/ element "pos" &/ content))
+    -- the first sense decides: 上がる has an exp sense further down, but is a verb
+    expression = T.concat (e $/ element "ent_seq" &/ content) `Set.member` extra
+              || case e $/ element "sense" of
+                   s : _ -> "exp" `elem` (s $/ element "pos" &/ content)
+                   []    -> False
     senses     = parseSenses e
 
 -- | A sense applies to a (keb, reb) pair unless restricted away by stagk/stagr.
@@ -157,27 +178,47 @@ mergeLexemes ls =
       { plPos      = unionTags (plPos a) (plPos b)
       , plPriority = unionTags (plPriority a) (plPriority b)
       , plConcepts = nubOrdOn fst (plConcepts a <> plConcepts b)
+      , plExpression = plExpression a && plExpression b
       }
 
 unionTags :: Maybe Text -> Maybe Text -> Maybe Text
 unionTags a b = joinTags (nubOrd (concatMap (T.splitOn ",") (catMaybes [a, b])))
 
--- | All Lexemes of a JMdict document, merged across entries.
-lexemesFromDocument :: XML.Document -> [PLexeme]
-lexemesFromDocument doc =
-  mergeLexemes (concatMap parseEntry (fromDocument doc $// element "entry"))
+-- | All Lexemes of a JMdict document, merged across entries; @extra@ are the
+-- ent_seq numbers of further expressions ('expressionsFile').
+lexemesFromDocument :: Set Text -> XML.Document -> [PLexeme]
+lexemesFromDocument extra doc =
+  mergeLexemes (concatMap (parseEntry extra) (fromDocument doc $// element "entry"))
 
--- | 'lexemesFromDocument' from JMdict XML text (used by the tests).
+-- | 'lexemesFromDocument' from JMdict XML text, without further expressions
+-- (used by the tests).
 lexemesFromText :: TL.Text -> Either String [PLexeme]
-lexemesFromText =
-  either (Left . show) (Right . lexemesFromDocument) . XML.parseText parseSettings
+lexemesFromText = lexemesFromTextWith Set.empty
+
+lexemesFromTextWith :: Set Text -> TL.Text -> Either String [PLexeme]
+lexemesFromTextWith extra =
+  either (Left . show) (Right . lexemesFromDocument extra) . XML.parseText parseSettings
+
+-- | The curated list of further expressions, relative to the repository root.
+expressionsFile :: FilePath
+expressionsFile = "mappings/expressions.tsv"
+
+-- | ent_seq numbers from the first column; @#@ comments and blank lines skipped.
+parseExpressionList :: Text -> Set Text
+parseExpressionList txt = Set.fromList
+  [ T.strip (head (T.splitOn "\t" l))
+  | l <- T.lines txt, let s = T.strip l, not (T.null s), not ("#" `T.isPrefixOf` s) ]
 
 -- Writing ------------------------------------------------------------------
 
 ingest :: Pipe -> FilePath -> IO IngestStats
 ingest pipe path = do
   doc <- XML.readFile parseSettings path
-  let lexemes = lexemesFromDocument doc
+  present <- doesFileExist expressionsFile
+  if present then pure () else
+    ioError (userError ("missing " <> expressionsFile <> " (run from the repository root)"))
+  extra <- parseExpressionList <$> TIO.readFile expressionsFile
+  let lexemes = lexemesFromDocument extra doc
   writeLexemes pipe lexemes
   pure IngestStats
     { statLexemes  = length lexemes
@@ -213,7 +254,8 @@ lexemeCypher :: Text
 lexemeCypher =
   "UNWIND $rows AS row \
   \MERGE (l:Lexeme {phonology: row.phonology, orthography: row.orthography}) \
-  \SET l.pos = row.pos, l.priority = row.priority, l.kanjiCount = size(row.signs) \
+  \SET l.pos = row.pos, l.priority = row.priority, l.kanjiCount = size(row.signs), \
+  \    l.expression = row.expression \
   \WITH l, row \
   \UNWIND row.signs AS cp \
   \MATCH (s:Sign {codepoint: cp}) \
@@ -237,6 +279,7 @@ lexRow l = M $ Map.fromList
   , ("pos",         maybe (N ()) T (plPos l))
   , ("priority",    maybe (N ()) T (plPriority l))
   , ("signs",       L (map I (plSigns l)))
+  , ("expression",  B (plExpression l))
   , ("concepts",    L [ M (Map.fromList [("id", T cid), ("gloss", T g)])
                       | (cid, g) <- plConcepts l ])
   ]

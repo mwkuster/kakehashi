@@ -69,9 +69,7 @@ make rq3-strata          # -> data/rq3_strata{,_bs,_wikt}.md
 The report gives the Wilcoxon test as z (normal approximation) and log₁₀ p,
 since p itself underflows to 0.
 
-Result (2026-11-01): *kun* writings (1,473 pairs) win 92.8% / 90.6% / 94.7%
-(Unihan / Baxter–Sagart / Wiktionary), rank-biserial 0.964, z = 32.0; compounds
-87.6% / 81.0% / 88.2%.
+Result (2026-11-08, with the competition rule and without expressions): *kun* writings (1,406 pairs) win 93.1% / 89.7% / 94.9% (Unihan / Baxter–Sagart / Wiktionary), rank-biserial 0.968, z = 31.5; compounds 87.8% / 80.6% / 88.4%.
 
 ## Stronger controls (`rq3_controls.py`), universe (`universe.py`), figure (`fig_rq3.py`)
 - `make rq3-controls` → `data/rq3_controls.md`: (A) each actual pair ranked against
@@ -79,12 +77,14 @@ Result (2026-11-01): *kun* writings (1,473 pairs) win 92.8% / 90.6% / 94.7%
   jōyō only); (B) within-set discrimination: own character vs the other characters
   of the same homophone set (kun writings, chance = 50%); (C) period re-anchoring:
   modern vs Old Chinese pool percentiles, with the regression-to-the-mean caveat.
-  Result (2026-11-01, Unihan): kun writings at the 92nd percentile on average;
-  own character wins 86.5% of 1,604 within-set comparisons (361 sets).
+  Result (2026-11-08, Unihan): kun writings at the 93rd percentile on average; own character wins 86.6% of 1,600 within-set comparisons (359 sets).
 - `make universe` → `data/universe_report.md`: F5 universe from raw JMdict,
-  search-only forms excluded (33,510 readings; 1,044 native-type verb sets, 187
-  among common writings; 803 without outdated, irregular and rare forms).
+  search-only forms and expressions excluded, writings compared by which part of the reading their kanji stand for (27,159 readings; 898 native-type verb sets, 187 among common writings; 660 without outdated, irregular and rare forms). The report also gives the counts before the two rules (33,510; 1,044; 803).
   Native-type: single-kanji verb writings, without Sino-Japanese verbs (感じる).
+- `make native-sets` → `data/native_sets.md`: the native-type verb sets of
+  `universe.py` listed set by set (same selection), each character with its
+  writings and first JMdict gloss; common writings in bold, ° for characters
+  found only in oK/iK/rK forms, ★ for sets counted among common writings.
 - `make fig-rq3` → `data/fig_rq3_hist.csv`, input for the article's pgfplots figure.
 
 ## Gloss circularity (`rq3_overlap.py`)
@@ -99,9 +99,7 @@ writings): shared word in 57% of actual pairs vs 0.4% of controls (Baxter–Saga
 source (the actual pairs stay the same; only the random controls change) →
 `data/rq3_seeds.md`: the share of actual pairs that beat their control, per seed
 and as a range. The pool-based and within-set tests draw nothing at random.
-Result (2026-11-01), *kun* writings over ten seeds: 91.8–92.8% (Unihan),
-88.9–90.6% (Baxter–Sagart), 93.8–94.9% (Wiktionary); all writings vary by less
-than one point.
+Result (2026-11-08), *kun* writings over ten seeds: 92.0–93.7% (Unihan), 89.0–91.6% (Baxter–Sagart), 94.0–95.4% (Wiktionary); all writings vary by less than one point.
 
 ## Later kana mergers (`historical_kana.py`)
 `OldJapanese.hs` flags only the kō/otsu syllables of Old Japanese. Later sound
@@ -128,7 +126,7 @@ a merger may have produced (72 contain a kō/otsu syllable), but only える (�
 いう / ゆう through variant readings of 言う and 結う. In the full set: 16
 candidates, 5 genuine (also いる 入 / 居・率 and おす 押 / 食), 11 rejected. The
 worked examples (はかる, とる, みる, なおす, こす, かく, きく) each have one historical
-spelling. RQ3 without the verified readings: unchanged (88.2%).
+spelling. RQ3 without the verified readings: unchanged (88.4%, 2026-11-08).
 
 ## Graph fingerprint (`graph_fingerprint.py`)
 `make graph-fingerprint` → `data/fingerprint/`: one file per node label and per

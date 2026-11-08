@@ -1,4 +1,4 @@
-.PHONY: build test neo4j-up neo4j-down init-db ingest ingest-kanjidic ingest-jmdict ingest-unihan ingest-baxter-sagart bridge-kyujitai ingest-wiktionary rq3-wiktionary homophones homophones-paper worksheet curate align eval-pairs rq3-venv rq3 sim-load rq3-period fossil rq3-strata rq3-controls universe fig-rq3 rq3-overlap rq3-seeds report historical-kana graph-fingerprint clean
+.PHONY: build test neo4j-up neo4j-down init-db ingest ingest-kanjidic ingest-jmdict ingest-unihan ingest-baxter-sagart bridge-kyujitai ingest-wiktionary rq3-wiktionary homophones homophones-paper worksheet curate align eval-pairs rq3-venv rq3 sim-load rq3-period fossil rq3-strata rq3-controls universe native-sets fig-rq3 rq3-overlap rq3-seeds report historical-kana graph-fingerprint clean
 
 build:
 	cabal build all
@@ -127,6 +127,10 @@ rq3-controls: $(PAIRS)
 # Homophone-by-writing universe from raw JMdict, split by subset (stdlib only).
 universe:
 	python3 eval/universe.py --data data --report data/universe_report.md
+
+# The native-type verb sets of the universe, listed set by set (stdlib only).
+native-sets:
+	python3 eval/native_sets.py --data data --report data/native_sets.md
 
 # Binned actual-vs-control similarity distributions for the article figure.
 fig-rq3: data/eval_pairs.csv
