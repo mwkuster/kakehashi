@@ -23,9 +23,10 @@ GitHub's "Cite this repository" give):
 > Küster, Marc Wilhelm (2026). *kakehashi: A Sign–Concept Mapper for Japanese*.
 > Software. Zenodo. https://doi.org/10.5281/zenodo.23863325
 
-To reproduce the Grafematik 2026 article, use version 0.2.3, the version it
-cites: [10.5281/zenodo.24298697](https://doi.org/10.5281/zenodo.24298697).
-Every release has its own version DOI on Zenodo; earlier versions are 0.2.2
+To reproduce the Grafematik 2026 article, use version 0.2.4, the version it
+cites: [10.5281/zenodo.24323282](https://doi.org/10.5281/zenodo.24323282).
+Every release has its own version DOI on Zenodo; earlier versions are 0.2.3
+([10.5281/zenodo.24298697](https://doi.org/10.5281/zenodo.24298697)), 0.2.2
 ([10.5281/zenodo.24058037](https://doi.org/10.5281/zenodo.24058037)), 0.2.1
 ([10.5281/zenodo.24057257](https://doi.org/10.5281/zenodo.24057257)), 0.2.0
 ([10.5281/zenodo.24040004](https://doi.org/10.5281/zenodo.24040004)) and
