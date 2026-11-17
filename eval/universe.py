@@ -22,7 +22,9 @@ the counts can be split further:
     表す / 現わす (あらわ / あら) do. Inside a run of several kanji the share
     of each kanji is unknown, so a kanji that both runs contain is taken to
     stand for the same part: 挨拶代わり / あいさつ代わり (代 in both) do not
-    compete, 会社 / 会者 (社 / 者) do. Kana are matched leniently (katakana,
+    compete, 会社 / 会者 (社 / 者) do. This holds only for spellings of one
+    word (writings of one JMdict entry): 風 / 風邪 and 兄 / 義兄 are two words and
+    compete. Kana are matched leniently (katakana,
     ー, the counter ケ/ヶ, dakuten, historical spellings such as 侍ふ); a
     writing that still cannot be aligned competes with every other one;
   * a reading belongs to the universe if >= 2 distinct signatures remain
@@ -141,8 +143,8 @@ def is_expression(entry, extra=frozenset()):
 
 
 def load_lexemes(path, expressions=False):
-    """(reading, orthography, pos set, common?, kanji-form tags) per (reading x kanji writing).
-    Expression entries are skipped unless expressions=True."""
+    """(reading, orthography, pos set, common?, kanji-form tags, ent_seq) per (reading x
+    kanji writing) and entry. Expression entries are skipped unless expressions=True."""
     text = Path(path).read_text(encoding="utf-8")
     extra = load_expression_list()
     out = []
@@ -157,6 +159,7 @@ def load_lexemes(path, expressions=False):
             keb = re.search(r"<keb>(.*?)</keb>", ke).group(1)
             kebs.append((keb, "<ke_pri>" in ke, inf))
         pos = set(re.findall(r"<pos>&(.*?);</pos>", e))
+        seq = re.search(r"<ent_seq>(\d+)</ent_seq>", e).group(1)
         for re_ in re.findall(r"<r_ele>(.*?)</r_ele>", e, re.S):
             reb = re.search(r"<reb>(.*?)</reb>", re_).group(1)
             if "<re_nokanji" in re_ or "<re_inf>&sk;</re_inf>" in re_:   # search-only reading
@@ -165,7 +168,7 @@ def load_lexemes(path, expressions=False):
             for keb, pri, inf in kebs:
                 if restr and keb not in restr:
                     continue
-                out.append((reb, keb, pos, pri, inf))
+                out.append((reb, keb, pos, pri, inf, seq))
     return out
 
 
@@ -208,23 +211,39 @@ def kanji_set(run):
     return {c for c in run if is_kanji(c)}
 
 
-def compete(sa, sb):
+def compete(sa, sb, same_word=True):
     """Do two writings (their kanji_spans) put different kanji on overlapping
-    parts of the reading? Runs whose kanji sets are nested do not compete (a
-    shared kanji stands for the same part). An unaligned writing (None) competes."""
+    parts of the reading? For two spellings of one word (`same_word`: they share a
+    JMdict entry), runs whose kanji sets are nested do not compete: a shared kanji
+    stands for the same part (相づち / 相槌). Two different words always compete on
+    different kanji (風 / 風邪, 兄 / 義兄). An unaligned writing (None) competes."""
     if sa is None or sb is None:
         return True
-    return any(s1 < e2 and s2 < e1 and not (kanji_set(ka) <= kanji_set(kb) or kanji_set(kb) <= kanji_set(ka))
+    def nested(ka, kb):
+        return kanji_set(ka) <= kanji_set(kb) or kanji_set(kb) <= kanji_set(ka)
+    return any(s1 < e2 and s2 < e1 and kanji_set(ka) != kanji_set(kb) and not (same_word and nested(ka, kb))
                for ka, s1, e1 in sa for kb, s2, e2 in sb)
 
 
-def competing(reb, orths):
-    """The writings of a reading that compete with a writing of another signature."""
+def competing(reb, orths, entries=None):
+    """The writings of a reading that compete with a writing of another signature.
+    `entries`: (reading, writing) -> JMdict entries; without it every pair counts
+    as one word."""
     orths = list(orths)
     sp = {o: kanji_spans(reb, o) for o in orths}
     sig = {o: signature(o) for o in orths}
+    same = (lambda a, b: True) if entries is None else \
+        (lambda a, b: bool(entries.get((reb, a), set()) & entries.get((reb, b), set())))
     return {a for a in orths
-            if any(sig[a] != sig[b] and compete(sp[a], sp[b]) for b in orths)}
+            if any(sig[a] != sig[b] and compete(sp[a], sp[b], same(a, b)) for b in orths)}
+
+
+def entry_map(lexemes):
+    """(reading, writing) -> the JMdict entries (ent_seq) that have the pair."""
+    m = collections.defaultdict(set)
+    for l in lexemes:
+        m[(l[0], l[1])].add(l[5])
+    return m
 
 
 def universe(lexemes):
@@ -233,11 +252,12 @@ def universe(lexemes):
     for reb, keb, *_ in lexemes:
         if is_kanji_writing(keb):
             orths[reb].add(keb)
+    entries = entry_map(lexemes)
     out = {}
     for r, os in orths.items():
         if len({signature(o) for o in os}) < 2:
             continue
-        sigs = {signature(o) for o in competing(r, os)}
+        sigs = {signature(o) for o in competing(r, os, entries)}
         if len(sigs) >= 2:
             out[r] = sigs
     return out

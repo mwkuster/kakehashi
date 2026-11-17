@@ -116,14 +116,17 @@ segments (c : cs)
 -- | Do two writings of one reading compete, i.e. put different kanji on
 -- overlapping parts of the reading? 痺れをきらす (痺 = しび) and しびれを切らす
 -- (切 = き) do not; 入れる / 淹れる (both い) and 表す / 現わす (あらわ / あら)
--- do. Inside a run of several kanji the share of each kanji is unknown, so a
+-- do. Inside a run of several kanji the share of each kanji is unknown, so for
+-- two spellings of one word (the first argument: they share a JMdict entry) a
 -- kanji that both runs contain is taken to stand for the same part: 挨拶代わり
--- and あいさつ代わり (代 in both) do not compete, 会社 and 会者 (社 / 者) do. A
--- writing that cannot be aligned competes with every other one.
-competes :: Maybe [(Text, Int, Int)] -> Maybe [(Text, Int, Int)] -> Bool
-competes (Just sa) (Just sb) =
-  or [ s1 < e2 && s2 < e1 && not (ka `Set.isSubsetOf` kb || kb `Set.isSubsetOf` ka)
+-- and あいさつ代わり (代 in both) do not compete. Two different words always
+-- compete on different kanji: 風 'wind' / 風邪 'a cold', 兄 / 義兄. A writing
+-- that cannot be aligned competes with every other one.
+competes :: Bool -> Maybe [(Text, Int, Int)] -> Maybe [(Text, Int, Int)] -> Bool
+competes sameWord (Just sa) (Just sb) =
+  or [ s1 < e2 && s2 < e1 && ka /= kb
+         && not (sameWord && (ka `Set.isSubsetOf` kb || kb `Set.isSubsetOf` ka))
      | (ra, s1, e1) <- sa, (rb, s2, e2) <- sb
      , let ka = kanjiSet ra, let kb = kanjiSet rb ]
   where kanjiSet = Set.fromList . filter isKanji . map ord . T.unpack
-competes _ _ = True
+competes _ _ _ = True

@@ -98,15 +98,17 @@ main = hspec $ do
 
   describe "Kakehashi.Kanji.competes" $ do
     it "is false for kanji on different parts of the reading" $
-      competes (Just [("切", 4, 5)]) (Just [("痺", 0, 2)]) `shouldBe` False
+      competes True (Just [("切", 4, 5)]) (Just [("痺", 0, 2)]) `shouldBe` False
     it "is true for different kanji on overlapping parts" $
-      competes (Just [("表", 0, 3)]) (Just [("現", 0, 2)]) `shouldBe` True
-    it "takes a kanji that both runs contain to stand for the same part" $ do
-      -- 挨拶代わり / あいさつ代わり: 代 in both; 一月 / １月 would be the same if １月 were a writing
-      competes (Just [("挨拶代", 0, 6)]) (Just [("代", 4, 6)]) `shouldBe` False
-      competes (Just [("会社", 0, 4)]) (Just [("会者", 0, 4)]) `shouldBe` True
+      competes True (Just [("表", 0, 3)]) (Just [("現", 0, 2)]) `shouldBe` True
+    it "takes a kanji that both runs contain to stand for the same part, within one word" $ do
+      -- 挨拶代わり / あいさつ代わり: 代 in both
+      competes True (Just [("挨拶代", 0, 6)]) (Just [("代", 4, 6)]) `shouldBe` False
+      competes True (Just [("会社", 0, 4)]) (Just [("会者", 0, 4)]) `shouldBe` True
+    it "lets two different words compete on nested kanji (風 / 風邪)" $
+      competes False (Just [("風", 0, 2)]) (Just [("風邪", 0, 2)]) `shouldBe` True
     it "is true when a writing cannot be aligned" $
-      competes Nothing (Just [("人", 0, 2)]) `shouldBe` True
+      competes True Nothing (Just [("人", 0, 2)]) `shouldBe` True
 
   describe "Kakehashi.Kanji.isKanji" $ do
     it "accepts a CJK Unified ideograph" $
@@ -123,7 +125,8 @@ main = hspec $ do
       map isKanjiWriting ["ひらがな", "１月", "Ｘ線", "過・現・未", "１０万"] `shouldBe` replicate 5 False
 
   describe "Kakehashi.Query.Homophone.refineSet" $ do
-    let raw o p = RawWriting o (Just p) Nothing Nothing
+    let raw o p = RawWriting o (Just p) Nothing Nothing ["1"]  -- one JMdict entry
+        rawE e o p = RawWriting o (Just p) Nothing Nothing [e]
     it "collapses okurigana variants of the same kanji" $
       -- 上がる / 上る share kanji 上; 挙がる is a second kanji → size 2, not 3
       fmap hsSize (refineSet 2 ("あがる",
@@ -131,7 +134,7 @@ main = hspec $ do
         `shouldBe` Just 2
     it "drops kana-only writings (the こう/公 case)" $
       -- only 公 carries kanji; こう (kana) is dropped → 1 writing → below min 2
-      refineSet 2 ("こう", [raw "公" "n", RawWriting "こう" Nothing Nothing Nothing])
+      refineSet 2 ("こう", [raw "公" "n", RawWriting "こう" Nothing Nothing Nothing []])
         `shouldBe` Nothing
     it "keeps distinct-kanji sets and records collapsed forms as variants" $ do
       let hs = fromJust $ refineSet 2 ("はかる",
@@ -165,10 +168,12 @@ main = hspec $ do
       refineSet 2 ("かげつ", [raw "ヶ月" "ctr", raw "箇月" "ctr", raw "か月" "ctr"]) `shouldBe` Nothing
       -- 所々 / 処々: different kanji for ところ
       fmap hsSize (refineSet 2 ("ところどころ", [raw "所々" "n", raw "処々" "n"])) `shouldBe` Just 2
+    it "keeps different words with nested kanji as a set (風 'wind' / 風邪 'a cold')" $
+      fmap hsSize (refineSet 2 ("かぜ", [rawE "1" "風" "n", rawE "2" "風邪" "n"])) `shouldBe` Just 2
     it "carries the representative's priority through the collapse" $ do
       let hs = fromJust $ refineSet 2 ("はかる",
-            [ RawWriting "測る" (Just "v5r") (Just "ichi1,news1") (Just "to measure")
-            , RawWriting "計る" (Just "v5r") (Just "ichi1") (Just "to measure") ])
+            [ RawWriting "測る" (Just "v5r") (Just "ichi1,news1") (Just "to measure") ["1600650"]
+            , RawWriting "計る" (Just "v5r") (Just "ichi1") (Just "to measure") ["1600650"] ])
       wPriority (head (hsWritings hs)) `shouldBe` Just "ichi1,news1"
       wGloss    (head (hsWritings hs)) `shouldBe` Just "to measure"
 
@@ -176,7 +181,7 @@ main = hspec $ do
   -- one spoken word, several kanji each carrying a distinct concept — the same
   -- phenomenon as はかる. Glosses are the JMdict sense-1 first clauses.
   describe "homophone-by-writing exemplars (data-derived, like はかる)" $ do
-    let w o g = RawWriting o (Just "v5r,vt") (Just "ichi1") (Just g)
+    let w o g = RawWriting o (Just "v5r,vt") (Just "ichi1") (Just g) []
         glossFor o hs = lookup o [ (wOrthography x, wGloss x) | x <- hsWritings hs ]
         sized n reading raws = do
           let hs = fromJust $ refineSet 2 (reading, raws)

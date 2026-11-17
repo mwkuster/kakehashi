@@ -120,7 +120,7 @@ def main():
 
     # reading -> kanji -> {writings: [(orth, common)], common, usual, gloss}
     sets = {r: collections.OrderedDict() for r in u_all}
-    for reb, keb, pos, pri, inf in nv:
+    for reb, keb, pos, pri, inf, *_ in nv:
         if reb not in sets or not is_kanji_writing(keb) or signature(keb) not in u_all[reb]:
             continue                                                # competing kanji writings only
         d = sets[reb].setdefault(signature(keb)[0],

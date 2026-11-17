@@ -72,7 +72,7 @@ make rq3-strata          # -> data/rq3_strata{,_bs,_wikt}.md
 The report gives the Wilcoxon test as z (normal approximation) and log₁₀ p,
 since p itself underflows to 0.
 
-Result (2026-11-17, 0.2.3 rules): *kun* writings (1,238 pairs) win 93.3% / 89.4% / 94.6% (Unihan / Baxter–Sagart / Wiktionary), rank-biserial 0.970, z = 29.6; compounds 87.6% / 80.6% / 88.3%.
+Result (2026-11-17, 0.2.4 rules): *kun* writings (1,248 pairs) win 93.6% / 89.0% / 96.3% (Unihan / Baxter–Sagart / Wiktionary), rank-biserial 0.971, z = 29.7; compounds 87.6% / 81.5% / 88.5%.
 
 ## Stronger controls (`rq3_controls.py`), universe (`universe.py`), figure (`fig_rq3.py`)
 - `make rq3-controls` → `data/rq3_controls.md`: (A) each actual pair ranked against
@@ -85,7 +85,7 @@ Result (2026-11-17, 0.2.3 rules): *kun* writings (1,238 pairs) win 93.3% / 89.4%
   search-only forms and expressions excluded, only kanji writings counted (kanji
   and kana: no numerals or symbols, １月), writings compared by which part of the
   reading their kanji stand for, a kanji shared by two runs taken to stand for
-  the same part (20,882 readings; 898 native-type verb sets, 187 among common
+  the same part within one JMdict entry (20,929 readings; 898 native-type verb sets, 187 among common
   writings; 660 without outdated, irregular and rare forms). The report also gives
   the counts before the competition and expression rules (32,949; 1,044; 803).
   Native-type: single-kanji verb writings, without Sino-Japanese verbs (感じる).
@@ -99,15 +99,15 @@ Result (2026-11-17, 0.2.3 rules): *kun* writings (1,238 pairs) win 93.3% / 89.4%
 `make rq3-overlap` → `data/rq3_overlap.md`: how often native and Sinitic glosses
 share an English content word (actual vs control), and the win rate after
 excluding every pair in which either side shares one. Result (2026-11-17, kun
-writings): shared word in 59% of actual pairs vs 0.5% of controls (Baxter–Sagart:
-49%); without shared words, 84.4% (Unihan, 505 pairs) / 79.8% (B&S, 484) still win.
+writings): shared word in 59% of actual pairs vs 0.6% of controls (Baxter–Sagart:
+50%); without shared words, 85.5% (Unihan, 505 pairs) / 79.2% (B&S, 485) still win.
 
 ## Seed stability (`rq3_seeds.py`)
 `make rq3-seeds` exports the pairs again with ten `eval-pairs` seeds per Sinitic
 source (the actual pairs stay the same; only the random controls change) →
 `data/rq3_seeds.md`: the share of actual pairs that beat their control, per seed
 and as a range. The pool-based and within-set tests draw nothing at random.
-Result (2026-11-17), *kun* writings over ten seeds: 92.3–93.3% (Unihan), 88.4–90.6% (Baxter–Sagart), 94.1–95.2% (Wiktionary); all writings vary by less than one point.
+Result (2026-11-17), *kun* writings over ten seeds: 91.7–94.5% (Unihan), 89.0–91.3% (Baxter–Sagart), 93.9–96.3% (Wiktionary); all writings vary by less than one point.
 
 ## Later kana mergers (`historical_kana.py`)
 `OldJapanese.hs` flags only the kō/otsu syllables of Old Japanese. Later sound

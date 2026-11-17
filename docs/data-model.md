@@ -52,6 +52,7 @@ id, so each candidate sense of a character has its own alignment.
   with numerals or symbols such as １月 are dropped); expressions are left out;
   and two writings differ only if different kanji stand for the same part of the
   reading (しびれを切らす / 痺れをきらす and 挨拶代わり / あいさつ代わり do not
-  differ, 入れる / 淹れる do; `Kakehashi.Kanji.competes`). はかる ⇒ {測, 計, 図, 謀, 諮, 量}.
+  differ, 入れる / 淹れる do; a kanji shared by two runs counts as the same part
+  only for spellings of one JMdict entry, so 風 / 風邪 differ; `Kakehashi.Kanji.competes`). はかる ⇒ {測, 計, 図, 謀, 諮, 量}.
 - ***on*/*kun* divergence**: the same sign with a native *kun* and a Sinitic *on*
   reading.

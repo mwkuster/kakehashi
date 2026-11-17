@@ -76,6 +76,7 @@ data RawWriting = RawWriting
   , rwPos         :: !(Maybe Text)
   , rwPriority    :: !(Maybe Text)
   , rwGloss       :: !(Maybe Text)
+  , rwEntries     :: ![Text]        -- ^ the JMdict entries (ent_seq) with this writing
   }
   deriving (Eq, Show)
 
@@ -143,10 +144,11 @@ cypher =
   \          = coalesce(l.kanjiCount, -1)) \
   \OPTIONAL MATCH (l)-[:MEANS]->(c:Concept) \
   \WITH l, c ORDER BY toInteger(split(c.id, ':')[0]), toInteger(split(c.id, ':')[1]) \
-  \WITH l, head(collect(c.gloss)) AS gloss \
+  \WITH l, head(collect(c.gloss)) AS gloss, \
+  \     collect(DISTINCT split(c.id, ':')[0]) AS entries \
   \WITH l.phonology AS phon, \
   \     collect({orthography: l.orthography, pos: l.pos, \
-  \              priority: l.priority, gloss: gloss}) AS writings \
+  \              priority: l.priority, gloss: gloss, entries: entries}) AS writings \
   \WHERE size(writings) >= $minSize \
   \RETURN phon AS phon, writings AS writings"
 
@@ -168,8 +170,9 @@ refineSet minSize (phon, raws)
 competingWritings :: Text -> [RawWriting] -> [RawWriting]
 competingWritings phon raws =
   [ w | (w, sig, sp) <- annotated
-      , or [ sig /= sig' && competes sp sp' | (_, sig', sp') <- annotated ] ]
+      , or [ sig /= sig' && competes (sameWord w w') sp sp' | (w', sig', sp') <- annotated ] ]
   where
+    sameWord a b = any (`elem` rwEntries b) (rwEntries a)
     annotated = [ (w, kanjiCodepoints o, kanjiSpans phon o)
                 | w <- raws, let o = rwOrthography w, isKanjiWriting o ]
 
@@ -222,6 +225,7 @@ decodeWriting v = do
     , rwPos         = asText =<< Map.lookup "pos" m
     , rwPriority    = asText =<< Map.lookup "priority" m
     , rwGloss       = asText =<< Map.lookup "gloss" m
+    , rwEntries     = mapMaybe asText (asList (Map.lookup "entries" m))
     }
 
 asText :: Value -> Maybe Text
