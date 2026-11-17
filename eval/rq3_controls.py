@@ -34,7 +34,7 @@ import pandas as pd
 from scipy.stats import binomtest
 
 from embed import embed, model_name
-from rq3_strata import on_readings, stratum
+from rq3_strata import readings, stratum
 
 KUN = {"kun-okurigana", "kun-single"}
 
@@ -75,10 +75,10 @@ def pools(data, chars):
     }
 
 
-def analyse(name, pairs_csv, pool, joyo, on, out):
+def analyse(name, pairs_csv, pool, joyo, rd, out):
     df = pd.read_csv(pairs_csv).dropna(subset=["native_gloss", "sinitic_gloss"])
     act = df[df.kind == "actual"].copy()
-    act["stratum"] = [stratum(o, r, on) for o, r in zip(act.orthography, act.reading)]
+    act["stratum"] = [stratum(o, r, rd) for o, r in zip(act.orthography, act.reading)]
 
     pool_chars = list(pool)
     natives = list(pd.unique(act.native_gloss))
@@ -155,14 +155,14 @@ def main():
     ap.add_argument("--report", default=None, type=Path)
     args = ap.parse_args()
     chars, joyo = kanjidic_chars(args.data / "kanjidic2.xml")
-    on = on_readings(args.data / "kanjidic2.xml")
+    rd = readings(args.data / "kanjidic2.xml")
     P = pools(args.data, chars)
     out = [f"# RQ3 with stronger controls ({model_name()})\n"]
     res = {}
     for name, csv, key in [("Unihan (modern)", "eval_pairs.csv", "unihan"),
                            ("Baxter–Sagart (Old Chinese)", "eval_pairs_bs.csv", "bs"),
                            ("Wiktionary", "eval_pairs_wikt.csv", "wikt")]:
-        res[key] = analyse(name, args.data / csv, P[key], joyo, on, out)
+        res[key] = analyse(name, args.data / csv, P[key], joyo, rd, out)
 
     # C: period re-anchoring
     k = ["reading", "orthography", "sign"]

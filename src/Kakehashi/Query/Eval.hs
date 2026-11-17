@@ -22,12 +22,14 @@ module Kakehashi.Query.Eval
   ) where
 
 import Data.Array (Array, listArray, (!))
+import Data.Containers.ListUtils (nubOrd)
 import Data.List (mapAccumL, sortOn)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Kakehashi.Bolt (Pipe, Record, Value (..), queryP, run)
 
+import Kakehashi.Kanji (isKanjiWriting)
 import Kakehashi.Query.Homophone (commonSetReadings)
 
 -- | A real (lexeme writing → sign → Sinitic sense) pairing with its native sense.
@@ -56,12 +58,14 @@ data EvalPair = EvalPair
 
 -- | Actual pairings over the homophone-common population, using SiniticSenses
 -- of the given @source@ (@"unihan"@ modern, @"baxter-sagart"@ period). A sign's
--- senses of that source are joined into one gloss.
+-- senses of that source are joined into one gloss. Only kanji writings take
+-- part ('isKanjiWriting'), as in the sets themselves: a form with numerals
+-- (１０月) is not a writing of the word.
 fetchActuals :: Pipe -> Text -> IO [Actual]
 fetchActuals pipe source = do
   readings <- commonSetReadings pipe
-  mapMaybe decodeActual <$> run pipe (queryP actualsCypher (Map.fromList
-    [("source", T source), ("readings", L (map T readings))]))
+  filter (isKanjiWriting . aOrth) . mapMaybe decodeActual <$> run pipe (queryP actualsCypher
+    (Map.fromList [("source", T source), ("readings", L (map T readings))]))
 
 -- Senses are ordered by entry and sense number as integers, so the native
 -- gloss is the first sense (a text sort puts sense 10 before sense 2). The
@@ -104,25 +108,29 @@ siniticSources pipe = do
   pure (mapMaybe (\r -> asText =<< Map.lookup "source" r) recs)
 
 -- | Coverage of the population's signs by a Sinitic source: (signs with a
--- sense of that source, all signs of the population's common writings).
+-- sense of that source, all signs of the population's common kanji writings).
+-- The population is the one of 'fetchActuals'.
 sourceCoverage :: Pipe -> Text -> IO (Int, Int)
 sourceCoverage pipe source = do
   readings <- commonSetReadings pipe
-  let params = Map.fromList [("source", T source), ("readings", L (map T readings))]
-      count cy = do
-        recs <- run pipe (queryP cy params)
-        pure $ case recs of
-          (r : _) | Just (I n) <- Map.lookup "n" r -> n
-          _                                        -> 0
-  total   <- count (populationSigns "")
-  covered <- count (populationSigns
-    "AND EXISTS { MATCH (s)-[:HAS_SINITIC_SENSE]->(ss:SiniticSense) WHERE ss.source = $source } ")
-  pure (covered, total)
-  where
-    populationSigns extra =
-      "MATCH (l:Lexeme)-[:WRITTEN_WITH]->(s:Sign) \
-      \WHERE l.priority IS NOT NULL AND l.phonology IN $readings " <> extra <>
-      "RETURN count(DISTINCT s) AS n"
+  recs <- run pipe (queryP coverageCypher (Map.fromList
+    [("source", T source), ("readings", L (map T readings))]))
+  let rows = [ (s, c) | r <- recs
+                      , Just o <- [asText =<< Map.lookup "orth" r], isKanjiWriting o
+                      , Just s <- [asText =<< Map.lookup "sign" r]
+                      , Just c <- [asBool =<< Map.lookup "covered" r] ]
+      signs   = nubOrd (map fst rows)
+      covered = nubOrd [ s | (s, True) <- rows ]
+  pure (length covered, length signs)
+
+coverageCypher :: Text
+coverageCypher =
+  "MATCH (l:Lexeme)-[:WRITTEN_WITH]->(s:Sign) \
+  \WHERE l.priority IS NOT NULL AND l.phonology IN $readings \
+  \  AND NOT coalesce(l.expression, false) \
+  \RETURN DISTINCT l.orthography AS orth, s.literal AS sign, \
+  \       size([(s)-[:HAS_SINITIC_SENSE]->(ss:SiniticSense) WHERE ss.source = $source | ss]) > 0 \
+  \         AS covered"
 
 -- Pairing (pure) -----------------------------------------------------------
 
@@ -177,3 +185,7 @@ decodePool r = (,) <$> (asText =<< Map.lookup "sign" r) <*> (asText =<< Map.look
 asText :: Value -> Maybe Text
 asText (T t) = Just t
 asText _     = Nothing
+
+asBool :: Value -> Maybe Bool
+asBool (B b) = Just b
+asBool _     = Nothing

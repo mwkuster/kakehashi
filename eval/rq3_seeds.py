@@ -18,18 +18,18 @@ import numpy as np
 import pandas as pd
 
 from embed import embed, model_name
-from rq3_strata import on_readings, stratum
+from rq3_strata import readings, stratum
 
 GROUPS = [("all", None), ("kun", {"kun-okurigana", "kun-single"}), ("compound", {"compound"})]
 
 
-def win_rates(df, V, ix, on):
+def win_rates(df, V, ix, rd):
     """Share of actual > control, overall and per writing type, for one pair file."""
     df = df.assign(cos=np.sum(V[df.native_gloss.map(ix).to_numpy()]
                               * V[df.sinitic_gloss.map(ix).to_numpy()], axis=1))
     piv = df.pivot_table(index="pair_id", columns="kind", values="cos").dropna()
     act = df[df.kind == "actual"].set_index("pair_id").loc[piv.index]
-    st = np.array([stratum(o, r, on) for o, r in zip(act.orthography, act.reading)])
+    st = np.array([stratum(o, r, rd) for o, r in zip(act.orthography, act.reading)])
     win = (piv["actual"] > piv["control"]).to_numpy()
     rates = {g: (win.mean() if members is None else win[np.isin(st, list(members))].mean())
              for g, members in GROUPS}
@@ -46,7 +46,7 @@ def main():
     ap.add_argument("--report", default="data/rq3_seeds.md", type=Path)
     args = ap.parse_args()
 
-    on = on_readings(args.kanjidic)
+    rd = readings(args.kanjidic)
     lines = [f"# RQ3: random-control results across seeds ({model_name()})", "",
              "Share of actual pairs that beat their random control. The actual pairs are "
              "the same for every seed; only the controls are redrawn.", ""]
@@ -58,7 +58,7 @@ def main():
                                      for d in frames.values()]))
         V = embed(texts)
         ix = {t: i for i, t in enumerate(texts)}
-        res = {s: win_rates(df, V, ix, on) for s, df in frames.items()}
+        res = {s: win_rates(df, V, ix, rd) for s, df in frames.items()}
 
         lines += [f"## {src}", "", "| seed | pairs | all | kun | compound |", "|---|---|---|---|---|"]
         for s in args.seeds:

@@ -48,6 +48,10 @@ id, so each candidate sense of a character has its own alignment.
 
 - **Homophone-by-writing set**: lexemes sharing a reading whose writings differ
   in their distinct kanji. Okurigana variants of one kanji collapse (上がる / 上る
-  → 上), and writings without kanji are dropped. はかる ⇒ {測, 計, 図, 謀, 諮, 量}.
+  → 上); only kanji writings count (kanji and kana, so kana-only forms and forms
+  with numerals or symbols such as １月 are dropped); expressions are left out;
+  and two writings differ only if different kanji stand for the same part of the
+  reading (しびれを切らす / 痺れをきらす and 挨拶代わり / あいさつ代わり do not
+  differ, 入れる / 淹れる do; `Kakehashi.Kanji.competes`). はかる ⇒ {測, 計, 図, 謀, 諮, 量}.
 - ***on*/*kun* divergence**: the same sign with a native *kun* and a Sinitic *on*
   reading.

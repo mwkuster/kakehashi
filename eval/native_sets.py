@@ -8,7 +8,8 @@ selection, so the counts can be looked up set by set:
   * a set = a reading with >= 2 kanji signatures among its verb writings;
   * native-type = each writing uses a single kanji (with okurigana) and is not
     a Sino-Japanese verb (愛する, 感じる);
-  * search-only forms are skipped, okurigana variants count once;
+  * search-only forms are skipped, okurigana variants count once, and only
+    kanji writings count (`universe.is_kanji_writing`);
   * writings compete only if different kanji stand for overlapping parts of
     the reading (`universe.kanji_spans`), so しびれを切らす / 痺れをきらす is
     not a set; characters that compete with no other writing are left out.
@@ -29,7 +30,7 @@ import collections
 import re
 from pathlib import Path
 
-from universe import kata_to_hira, load_lexemes, load_readings, signature, sino_verb, universe
+from universe import is_kanji_writing, kata_to_hira, load_lexemes, load_readings, signature, sino_verb, universe
 
 GLOSS_WIDTH = 48
 
@@ -86,10 +87,15 @@ def first_glosses(path):
 
 
 def source_versions(data):
-    head = (data / "JMdict_e").read_text(encoding="utf-8")[:5000]
-    jm = re.search(r"JMdict created: ([0-9-]+)", head)
+    """JMdict creation date and KANJIDIC2 database version, from the file headers
+    (everything before the first record: the DTD alone runs to several hundred lines)."""
+    def header(path, first_record):
+        text = Path(path).read_text(encoding="utf-8")
+        i = text.find(first_record)
+        return text if i < 0 else text[:i]
+    jm = re.search(r"JMdict created: ([0-9-]+)", header(data / "JMdict_e", "<entry>"))
     kd = re.search(r"<database_version>(.*?)</database_version>",
-                   (data / "kanjidic2.xml").read_text(encoding="utf-8")[:5000])
+                   header(data / "kanjidic2.xml", "<character>"))
     return (jm.group(1) if jm else "?"), (kd.group(1) if kd else "?")
 
 
@@ -115,8 +121,8 @@ def main():
     # reading -> kanji -> {writings: [(orth, common)], common, usual, gloss}
     sets = {r: collections.OrderedDict() for r in u_all}
     for reb, keb, pos, pri, inf in nv:
-        if reb not in sets or signature(keb) not in u_all[reb]:   # competing writings only
-            continue
+        if reb not in sets or not is_kanji_writing(keb) or signature(keb) not in u_all[reb]:
+            continue                                                # competing kanji writings only
         d = sets[reb].setdefault(signature(keb)[0],
                                  {"writings": [], "common": False, "usual": False, "gloss": None})
         if keb not in [w for w, _ in d["writings"]]:

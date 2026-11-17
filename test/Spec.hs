@@ -18,7 +18,7 @@ import Kakehashi.Ingest.Kyujitai (confirmedPairs, parseCuratedPairs, shinKyuPair
 import Kakehashi.Ingest.Similarity (SimRow (..), parseScores)
 import Kakehashi.Ingest.Sinitic (SinRow (..), parseSiniticRow)
 import Kakehashi.Ingest.Unihan (parseReadingLine)
-import Kakehashi.Kanji (competes, isKanji, kanjiCodepoints, kanjiSpans)
+import Kakehashi.Kanji (competes, isKanji, isKanjiWriting, kanjiCodepoints, kanjiSpans)
 import Kakehashi.Model
 import Kakehashi.OldJapanese (jtkSusceptible, koOtsuMora)
 import Kakehashi.Export.Curation (renderCuration)
@@ -85,14 +85,26 @@ main = hspec $ do
       kanjiSpans "コーヒーをいれる" "コーヒーを入れる" `shouldBe` Just [("入", 5, 6)]
     it "aligns each run of kanji between the kana" $
       kanjiSpans "おいかける" "追い掛ける" `shouldBe` Just [("追", 0, 1), ("掛", 2, 3)]
+    it "treats 々 as part of the kanji run" $
+      kanjiSpans "ひとびと" "人々" `shouldBe` Just [("人々", 0, 4)]
+    it "matches kana leniently: ー, the counter ケ/ヶ, dakuten, historical spellings" $ do
+      kanjiSpans "かみひこうき" "紙ヒコーキ" `shouldBe` Just [("紙", 0, 2)]
+      kanjiSpans "いっかげつ" "一ケ月"     `shouldBe` Just [("一", 0, 2), ("月", 3, 5)]
+      kanjiSpans "かげつ" "ヶ月"          `shouldBe` Just [("月", 1, 3)]
+      kanjiSpans "ことほき" "寿ぎ"         `shouldBe` Just [("寿", 0, 3)]
+      kanjiSpans "さぶらう" "侍ふ"         `shouldBe` Just [("侍", 0, 3)]
     it "gives Nothing when the kana do not match the reading" $
-      kanjiSpans "ひとびと" "人々" `shouldBe` Nothing
+      kanjiSpans "はかる" "計り" `shouldBe` Nothing
 
   describe "Kakehashi.Kanji.competes" $ do
     it "is false for kanji on different parts of the reading" $
       competes (Just [("切", 4, 5)]) (Just [("痺", 0, 2)]) `shouldBe` False
     it "is true for different kanji on overlapping parts" $
       competes (Just [("表", 0, 3)]) (Just [("現", 0, 2)]) `shouldBe` True
+    it "takes a kanji that both runs contain to stand for the same part" $ do
+      -- 挨拶代わり / あいさつ代わり: 代 in both; 一月 / １月 would be the same if １月 were a writing
+      competes (Just [("挨拶代", 0, 6)]) (Just [("代", 4, 6)]) `shouldBe` False
+      competes (Just [("会社", 0, 4)]) (Just [("会者", 0, 4)]) `shouldBe` True
     it "is true when a writing cannot be aligned" $
       competes Nothing (Just [("人", 0, 2)]) `shouldBe` True
 
@@ -103,6 +115,12 @@ main = hspec $ do
       isKanji 0x308B `shouldBe` False  -- る
     it "rejects the iteration mark 々" $
       isKanji 0x3005 `shouldBe` False
+
+  describe "Kakehashi.Kanji.isKanjiWriting" $ do
+    it "accepts kanji with kana, 々 and the counter ヶ" $
+      map isKanjiWriting ["測る", "人々", "ヶ月", "紙ヒコーキ"] `shouldBe` replicate 4 True
+    it "rejects kana-only forms and forms with numerals, Latin letters or symbols" $
+      map isKanjiWriting ["ひらがな", "１月", "Ｘ線", "過・現・未", "１０万"] `shouldBe` replicate 5 False
 
   describe "Kakehashi.Query.Homophone.refineSet" $ do
     let raw o p = RawWriting o (Just p) Nothing Nothing
@@ -137,6 +155,16 @@ main = hspec $ do
       fmap (map wOrthography . hsWritings)
         (refineSet 2 ("かきこむ", [raw "かき込む" "v5m", raw "書き込む" "v5m", raw "掻き込む" "v5m"]))
         `shouldBe` Just ["掻き込む", "書き込む"]
+    it "drops forms with characters other than kanji and kana (１月 beside 一月)" $
+      refineSet 2 ("いちがつ", [raw "一月" "n", raw "１月" "n"]) `shouldBe` Nothing
+    it "takes a shared kanji inside a run to stand for the same part" $ do
+      -- 挨拶代わり / あいさつ代わり / 挨拶がわり: one word, partly in kana
+      refineSet 2 ("あいさつがわり",
+        [raw "挨拶代わり" "n", raw "あいさつ代わり" "n", raw "挨拶がわり" "n"]) `shouldBe` Nothing
+      -- ヶ月 (ヶ = か) / 箇月 / か月: 月 stands for げつ in all three
+      refineSet 2 ("かげつ", [raw "ヶ月" "ctr", raw "箇月" "ctr", raw "か月" "ctr"]) `shouldBe` Nothing
+      -- 所々 / 処々: different kanji for ところ
+      fmap hsSize (refineSet 2 ("ところどころ", [raw "所々" "n", raw "処々" "n"])) `shouldBe` Just 2
     it "carries the representative's priority through the collapse" $ do
       let hs = fromJust $ refineSet 2 ("はかる",
             [ RawWriting "測る" (Just "v5r") (Just "ichi1,news1") (Just "to measure")

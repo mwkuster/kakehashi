@@ -12,13 +12,19 @@ the counts can be split further:
     contain is counted on its own. The first sense decides, since some verbs
     (上がる) have an exp sense further down;
   * a writing's signature = its distinct kanji in order of first occurrence;
-  * writings without kanji are dropped;
+  * only kanji writings count (`is_kanji_writing`): forms without kanji are
+    dropped, and so are forms with numerals, Latin letters or other symbols
+    (１月 beside 一月, Ｘ線), which are not kanji writings of the word;
   * two writings *compete* only if different kanji stand for overlapping
     parts of the reading (`kanji_spans`): 痺れをきらす (痺 = しび) and
     しびれを切らす (切 = き) do not, so a word whose writings differ only in
     which part is written in kana is not a set; 入れる / 淹れる (both い) and
-    表す / 現わす (あらわ / あら) do. A writing that cannot be aligned with
-    its reading (ateji, 々) competes with every other signature, as before;
+    表す / 現わす (あらわ / あら) do. Inside a run of several kanji the share
+    of each kanji is unknown, so a kanji that both runs contain is taken to
+    stand for the same part: 挨拶代わり / あいさつ代わり (代 in both) do not
+    compete, 会社 / 会者 (社 / 者) do. Kana are matched leniently (katakana,
+    ー, the counter ケ/ヶ, dakuten, historical spellings such as 侍ふ); a
+    writing that still cannot be aligned competes with every other one;
   * a reading belongs to the universe if >= 2 distinct signatures remain
     among its competing writings.
 
@@ -52,6 +58,16 @@ def signature(orth):
     return tuple(seen)
 
 
+def is_kana(ch):
+    """Hiragana (with the small forms and ゕゖ), katakana (with ヵヶ) or ー."""
+    return "ぁ" <= ch <= "ゖ" or "ァ" <= ch <= "ヺ" or ch == "ー"
+
+
+def is_kanji_writing(orth):
+    """A kanji writing: at least one kanji, and nothing but kanji, kana and 々."""
+    return any(is_kanji(c) for c in orth) and all(is_kanji(c) or is_kana(c) or c == "々" for c in orth)
+
+
 SINO_VERB_TAILS = ("する", "ずる", "じる", "ぜる")
 
 
@@ -77,6 +93,32 @@ VOICE.update(zip("はひふへほ", "ぱぴぷぺぽ"))
 
 def kata_to_hira(s):
     return "".join(chr(ord(c) - 0x60) if "ァ" <= c <= "ヶ" else c for c in s)
+
+
+# alignment normalisation (the same table as Kakehashi.Kanji.normKana): ヵヶ → か,
+# historical を ゐ ゑ → お い え, ぢ づ as じ ず, ゔ → う, dakuten / handakuten removed
+NORM = str.maketrans("ゕゖをゐゑゔがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ",
+                     "かかおいえうかきくけこさしすせそたしすてとはひふへほはひふへほ")
+H_ROW = dict(zip("はひふへほ", "わいうえお"))
+
+
+def norm_kana(s):
+    return kata_to_hira(s).translate(NORM)
+
+
+def kana_pattern(ch, medial):
+    """Regex for one kana of a writing against the normalised reading: ー stands for
+    any vowel (ヒコーキ ひこうき), the counter ケ for か (一ケ月), and a medial h-row
+    kana also for its modern w-row value (侍ふ さぶらう)."""
+    n = norm_kana(ch)
+    if n == "ー":
+        return "[あいうえおぁぃぅぇぉー]"
+    alts = {n}
+    if ch == "ケ":
+        alts.add("か")
+    if medial and n in H_ROW:
+        alts.add(H_ROW[n])
+    return re.escape(n) if len(alts) == 1 else "[" + "".join(sorted(alts)) + "]"
 
 
 # further expressions that JMdict does not tag exp (目につく), shared with the Haskell ingest
@@ -140,30 +182,39 @@ def load_readings(path):
 
 def kanji_spans(reb, orth):
     """Align a writing with its reading: [(kanji run, start, end)] in the reading
-    (kana normalised to hiragana), or None if the kana of the writing do not
+    (kana normalised, `norm_kana`), or None if the kana of the writing do not
     match the reading. Each run of kanji takes the shortest stretch of the
-    reading that lets the rest match (leftmost-shortest, as `.+?`)."""
+    reading that lets the rest match (leftmost-shortest, as `.+?`); 々 continues
+    the kanji run before it (人々 is one run)."""
     runs = []
     for ch in orth:
-        k = is_kanji(ch)
+        k = is_kanji(ch) or (ch == "々" and bool(runs) and runs[-1][0])
         if runs and runs[-1][0] == k:
             runs[-1][1] += ch
         else:
             runs.append([k, ch])
-    pat = "".join("(.+?)" if k else re.escape(kata_to_hira(s)) for k, s in runs)
-    m = re.fullmatch(pat, kata_to_hira(reb))
+    parts, pos = [], 0
+    for k, s in runs:
+        parts.append("(.+?)" if k else "".join(kana_pattern(c, pos + j > 0) for j, c in enumerate(s)))
+        pos += len(s)
+    m = re.fullmatch("".join(parts), norm_kana(reb))
     if not m:
         return None
     kruns = [s for k, s in runs if k]
     return [(s, m.start(i + 1), m.end(i + 1)) for i, s in enumerate(kruns)]
 
 
+def kanji_set(run):
+    return {c for c in run if is_kanji(c)}
+
+
 def compete(sa, sb):
     """Do two writings (their kanji_spans) put different kanji on overlapping
-    parts of the reading? An unaligned writing (None) competes."""
+    parts of the reading? Runs whose kanji sets are nested do not compete (a
+    shared kanji stands for the same part). An unaligned writing (None) competes."""
     if sa is None or sb is None:
         return True
-    return any(ka != kb and s1 < e2 and s2 < e1
+    return any(s1 < e2 and s2 < e1 and not (kanji_set(ka) <= kanji_set(kb) or kanji_set(kb) <= kanji_set(ka))
                for ka, s1, e1 in sa for kb, s2, e2 in sb)
 
 
@@ -180,7 +231,7 @@ def universe(lexemes):
     """reading -> the signatures of its competing writings, for readings with >= 2."""
     orths = collections.defaultdict(set)
     for reb, keb, *_ in lexemes:
-        if signature(keb):
+        if is_kanji_writing(keb):
             orths[reb].add(keb)
     out = {}
     for r, os in orths.items():
@@ -259,13 +310,16 @@ def main():
     for name, sub in make_subsets(lex_exp):
         sigs = collections.defaultdict(set)
         for reb, keb, *_ in sub:
-            if signature(keb):
+            if is_kanji_writing(keb):
                 sigs[reb].add(signature(keb))
         before = sum(len(s) >= 2 for s in sigs.values())
         lines.append(f"| {name} | {before:,} | {len(universe(sub)):,} | {len(universe(final[name])):,} |")
-    unaligned = sum(kanji_spans(reb, keb) is None for reb, keb, *_ in lex if signature(keb))
-    lines += ["", f"Writings that cannot be aligned with their reading (kept, as competing): "
-              f"{unaligned:,} of {sum(1 for l in lex if signature(l[1])):,}."]
+    kanji_writings = [(reb, keb) for reb, keb, *_ in lex if is_kanji_writing(keb)]
+    unaligned = sum(kanji_spans(reb, keb) is None for reb, keb in kanji_writings)
+    not_writings = sum(1 for l in lex if signature(l[1]) and not is_kanji_writing(l[1]))
+    lines += ["", f"Kanji writings that cannot be aligned with their reading (kept, as competing): "
+              f"{unaligned:,} of {len(kanji_writings):,}. Forms with kanji that are not kanji writings "
+              f"(numerals, Latin letters, symbols; left out): {not_writings:,}."]
 
     # raw spellings: readings with >= 2 distinct written forms, before okurigana
     # variants are collapsed and kanji-less forms dropped

@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from embed import embed
-from rq3_strata import on_readings, stratum
+from rq3_strata import readings, stratum
 
 STOP = set("a an the to of in on at by for with from and or as be is are been one's oneself "
            "something someone etc up out off into over about".split())
@@ -33,7 +33,7 @@ def main():
     ap.add_argument("--data", default="data", type=Path)
     ap.add_argument("--report", default=None, type=Path)
     args = ap.parse_args()
-    on = on_readings(args.data / "kanjidic2.xml")
+    rd = readings(args.data / "kanjidic2.xml")
     lines = ["# Gloss circularity: shared words and win rates", "",
              "| source | stratum | pairs | actual shares a word | control shares a word | win rate | win rate without shared words (pairs) |",
              "|---|---|---|---|---|---|---|"]
@@ -45,7 +45,7 @@ def main():
         df["cos"] = np.sum(V[df.native_gloss.map(ix).to_numpy()] * V[df.sinitic_gloss.map(ix).to_numpy()], axis=1)
         df["overlap"] = [float(bool(words(a) & words(b))) for a, b in zip(df.native_gloss, df.sinitic_gloss)]
         act = df[df.kind == "actual"]
-        st = {p: stratum(o, r, on) for p, o, r in zip(act.pair_id, act.orthography, act.reading)}
+        st = {p: stratum(o, r, rd) for p, o, r in zip(act.pair_id, act.orthography, act.reading)}
         df["kun"] = df.pair_id.map(lambda p: st[p] in ("kun-okurigana", "kun-single"))
         for label, sub in [("all", df), ("kun", df[df.kun])]:
             piv = sub.pivot_table(index="pair_id", columns="kind", values=["cos", "overlap"]).dropna()
